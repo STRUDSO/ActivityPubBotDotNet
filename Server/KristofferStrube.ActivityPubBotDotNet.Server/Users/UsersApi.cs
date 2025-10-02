@@ -78,13 +78,7 @@ public static class UsersApi
         {
             case Follow follow:
                 var clump = Clump.Create(follow, userUrl, user);
-                if (await ValidateInbox(configuration, activityPub, clump) is { } error)
-                {
-                    return TypedResults.BadRequest(error);
-                }
-
-                var message = await Do(dbContext, clump);
-                return TypedResults.Accepted(message);
+                return await Send(configuration, dbContext, activityPub, clump);
             case Undo undo:
                 switch (undo.Object?.First())
                 {
@@ -109,7 +103,19 @@ public static class UsersApi
         }
     }
 
-    private static async Task<string> Do(ActivityPubDbContext dbContext, Clump clump)
+    private static async Task<Results<BadRequest<string>, Accepted>> Send(IConfiguration configuration, ActivityPubDbContext dbContext,
+        ActivityPubService activityPub, Clump clump)
+    {
+        if (await ValidateInbox(configuration, activityPub, clump) is { } error)
+        {
+            return TypedResults.BadRequest(error);
+        }
+
+        var message = await Follow(dbContext, clump);
+        return TypedResults.Accepted(message);
+    }
+
+    private static async Task<string> Follow(ActivityPubDbContext dbContext, Clump clump)
     {
         if (await dbContext.FollowRelations.FindAsync(clump.GetPersonId(), clump.FollowedId()) is not null)
         {
