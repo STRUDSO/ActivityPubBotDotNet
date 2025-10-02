@@ -56,12 +56,12 @@ public class ActivityPubService
     {
         if (person is ILink { Href: Uri href })
         {
-            HttpResponseMessage response = await httpClient.GetAsync(href);
+            var response = await httpClient.GetAsync(href);
             if (!response.IsSuccessStatusCode)
             {
                 return null;
             }
-            IObjectOrLink? obj = await response.Content.ReadFromJsonAsync<IObjectOrLink>();
+            var obj = await response.Content.ReadFromJsonAsync<IObjectOrLink>();
             if (obj is Person { Inbox.Href: Uri inboxHref })
             {
                 return inboxHref;
@@ -74,7 +74,7 @@ public class ActivityPubService
         return null;
     }
 
-    public string? GetPersonId(IObjectOrLink? person)
+    public static string? GetPersonId(IObjectOrLink? person)
     {
         if (person is ILink { Href: Uri href })
         {

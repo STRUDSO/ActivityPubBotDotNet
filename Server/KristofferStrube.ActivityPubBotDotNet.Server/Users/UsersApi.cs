@@ -1,10 +1,73 @@
 ﻿using KristofferStrube.ActivityStreams;
-using KristofferStrube.ActivityStreams.JsonLD;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using static System.Text.Json.JsonSerializer;
 
 namespace KristofferStrube.ActivityPubBotDotNet.Server;
+
+public class Clump
+{
+    private readonly IEnumerable<IObjectOrLink> _actor;
+    private readonly IEnumerable<IObjectOrLink> _obj;
+
+    private Clump(Follow follow,
+        string userUrl,
+        UserInfo user,
+        IEnumerable<IObjectOrLink> actor,
+        IEnumerable<IObjectOrLink> obj)
+    {
+        _actor = actor;
+        _obj = obj;
+        Follow = follow;
+        UserUrl = userUrl;
+        User = user;
+    }
+
+    public static Clump Create(Follow follow, string userUrl, UserInfo user)
+    {
+        IReadOnlyCollection<IObjectOrLink> actor = (follow.Actor ?? Enumerable.Empty<IObjectOrLink>()).ToArray();
+        IReadOnlyCollection<IObjectOrLink> obj = (follow.Object ?? Enumerable.Empty<IObjectOrLink>()).ToArray();
+
+        var errors = Validate(actor, userUrl, obj);
+        if (errors != null)
+            throw new ArgumentException(errors);
+
+        return new Clump(follow, userUrl, user, actor, obj);
+    }
+
+    public Follow Follow { get; }
+    public string UserUrl { get; }
+    public UserInfo User { get; }
+
+    private static string? Validate(IEnumerable<IObjectOrLink> actor, string userUrl, IEnumerable<IObjectOrLink> obj)
+    {
+        string? ret = null;
+        if (ActivityPubService.GetPersonId(obj.First()) is not { } objectPersonId)
+            ret = "The Object was not a Link or did not have a id.";
+        else if (objectPersonId != userUrl)
+            ret = "The Object Id did not match the address of this inbox.";
+        else if (ActivityPubService.GetPersonId(actor.First()) is null)
+            ret = "The Actor was not a Link or did not have a id.";
+        return ret;
+    }
+
+    public string GetPersonId() => ActivityPubService.GetPersonId(_obj.First())!;
+
+    public string FollowedId() => User.Id;
+
+    public IObjectOrLink Actor() => _actor.First();
+
+    public Accept AcceptPayload(IConfiguration configuration)
+    {
+        var accept = new Accept
+        {
+            Actor = new List<Link> { new() { Href = new(UserUrl) } },
+            Id = $"{configuration["HostUrls:Server"]}/Activity/{Guid.NewGuid()}",
+            Object = new List<IObject>() { Follow }
+        };
+        return accept;
+    }
+}
 
 public static class UsersApi
 {
@@ -71,70 +134,26 @@ public static class UsersApi
 
     public static async Task<Results<BadRequest<string>, Accepted>> Inbox(string userId, [FromBody] IObject obj, IConfiguration configuration, ActivityPubDbContext dbContext, ActivityPubService activityPub)
     {
-        UserInfo? user = dbContext.Users.Find($"{configuration["HostUrls:Server"]}/Users/{userId}");
-        if (user is null)
-        {
-            return TypedResults.BadRequest("User could not be found.");
-        }
+        var userUrl = $"{configuration["HostUrls:Server"]}/Users/{userId}";
+
+        var user = await dbContext.Users.FindAsync(userUrl) ?? throw new BadHttpRequestException("User could not be found.");
 
         switch (obj)
         {
             case Follow follow:
-                if (follow.Actor is null)
+                var clump = Clump.Create(follow, userUrl, user);
+                if (await ValidateInbox(configuration, activityPub, clump) is { } error)
                 {
-                    return TypedResults.BadRequest("Follow request had no actor.");
-                }
-                if (activityPub.GetPersonId(follow.Object?.First()) is not string objectPersonId)
-                {
-                    return TypedResults.BadRequest("The Object was not a Link or did not have a id.");
-                }
-                if (objectPersonId != $"{configuration["HostUrls:Server"]}/Users/{userId}")
-                {
-                    return TypedResults.BadRequest("The Object Id did not match the address of this inbox.");
-                }
-                Uri? inbox = await activityPub.GetInboxUriAsync(follow.Actor.First());
-                if (inbox is null)
-                {
-                    return TypedResults.BadRequest("The User had no inbox specified.");
+                    return TypedResults.BadRequest(error);
                 }
 
-                Accept accept = new Accept()
-                {
-                    Actor = new List<Link>() { new() { Href = new($"{configuration["HostUrls:Server"]}/Users/{userId}") } },
-                    Id = $"{configuration["HostUrls:Server"]}/Activity/{Guid.NewGuid()}",
-                    Object = new List<IObject>() { follow }
-                };
-                HttpResponseMessage response = await activityPub.PostAsync(accept, inbox);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    return TypedResults.BadRequest("Could not send Accept message.");
-                }
-                if (activityPub.GetPersonId(follow.Actor.First()) is not string followerId)
-                {
-                    return TypedResults.BadRequest("The Actor was not a Link or did not have a id.");
-                }
-
-                if (dbContext.FollowRelations.Find(followerId, userId) is not null)
-                {
-                    return TypedResults.Accepted("Accepted as the Actor already followed the Object.");
-                }
-                UserInfo dbUser = dbContext.Users.Find($"{configuration["HostUrls:Server"]}/Users/{userId}")!;
-                UserInfo? dbFollower = dbContext.Users.Find(followerId);
-                if (dbFollower is null)
-                {
-                    dbFollower = new("Some Follower", followerId);
-                    dbContext.Add(dbFollower);
-                }
-                dbContext.Add(new FollowRelation(dbFollower.Id, dbUser.Id));
-                dbContext.SaveChanges();
-
-                return TypedResults.Accepted("Accepted");
+                var message = await Do(dbContext, clump);
+                return TypedResults.Accepted(message);
             case Undo undo:
                 switch (undo.Object?.First())
                 {
                     case Follow follow:
-                        if (activityPub.GetPersonId(follow.Actor?.First()) is not string actorId || follow.Object?.First() is not ILink { Href: Uri objectUri })
+                        if (ActivityPubService.GetPersonId(follow.Actor?.First()) is not string actorId || follow.Object?.First() is not ILink { Href: Uri objectUri })
                         {
                             return TypedResults.BadRequest($"Could not Undo Follow either because the actor was not a Link or did not have an id or because the Object was not a Link.");
                         }
@@ -152,6 +171,45 @@ public static class UsersApi
             default:
                 return TypedResults.BadRequest("The Object type was not supported.");
         }
+    }
+
+    private static async Task<string> Do(ActivityPubDbContext dbContext, Clump clump)
+    {
+        if (await dbContext.FollowRelations.FindAsync(clump.GetPersonId(), clump.FollowedId()) is not null)
+        {
+            return "Accepted as the Actor already followed the Object.";
+        }
+
+        UserInfo? dbFollower = await dbContext.Users.FindAsync(clump.GetPersonId());
+        if (dbFollower is null)
+        {
+            dbFollower = new("Some Follower", clump.GetPersonId());
+            dbContext.Users.Add(dbFollower);
+        }
+
+        dbContext.FollowRelations.Add(new FollowRelation(dbFollower.Id, clump.FollowedId()));
+        await dbContext.SaveChangesAsync();
+
+        return "Accepted";
+    }
+
+    private static async Task<string?> ValidateInbox(IConfiguration configuration, ActivityPubService activityPub, Clump clump)
+    {
+        if (await activityPub.GetInboxUriAsync(clump.Actor()) is { } inboxUri)
+            return await CheckInbox(activityPub, inboxUri, clump.AcceptPayload(configuration));
+
+        return "The User had no inbox specified.";
+    }
+
+    private static async Task<string?> CheckInbox(ActivityPubService activityPub,
+        Uri inboxUri, Accept objectOrLink)
+    {
+        var response = await activityPub.PostAsync(objectOrLink, inboxUri);
+        return response.IsSuccessStatusCode switch
+        {
+            false => "Could not send Accept message.",
+            _ => null
+        };
     }
 
     public static Results<BadRequest<string>, Ok<IObjectOrLink>> Outbox(string userId, IConfiguration configuration, ActivityPubDbContext dbContext, IOutboxService outboxService)
