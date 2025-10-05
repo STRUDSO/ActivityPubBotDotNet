@@ -74,7 +74,7 @@ public class ActivityPubService
         return null;
     }
 
-    public string? GetPersonId(IObjectOrLink? person)
+    public static string? GetPersonId(IObjectOrLink? person)
     {
         if (person is ILink { Href: Uri href })
         {
