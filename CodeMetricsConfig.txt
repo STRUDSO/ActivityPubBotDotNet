@@ -1,0 +1,17 @@
+# CA1501: Avoid excessive inheritance
+# https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1501#configure-threshold
+CA1501: 5
+
+# CA1502: Avoid excessive complexity
+# https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1502#configure-threshold
+CA1502: 1
+
+# CA1505: Avoid unmaintainable code
+# https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1505#configure-threshold
+CA1505:10
+
+# CA1506: Avoid excessive class coupling
+# https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1506#configure-threshold
+# Types: 95  Other symbols: 40
+CA1506(Method): 40
+CA1506(Type): 95

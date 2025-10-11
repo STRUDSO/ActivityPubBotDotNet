@@ -69,89 +69,118 @@ public static class UsersApi
         });
     }
 
-    public static async Task<Results<BadRequest<string>, Accepted>> Inbox(string userId, [FromBody] IObject obj, IConfiguration configuration, ActivityPubDbContext dbContext, ActivityPubService activityPub)
+    public static async Task<Results<BadRequest<string>, Accepted>> Inbox(
+        string userId,
+        [FromBody] IObject obj,
+        IConfiguration configuration,
+        ActivityPubDbContext dbContext,
+        ActivityPubService activityPub)
     {
-        UserInfo? user = dbContext.Users.Find($"{configuration["HostUrls:Server"]}/Users/{userId}");
-        if (user is null)
+        var humbleDbContext = new HumbleDbContext(dbContext);
+        var humbleUserIdConfiguration = new HumbleUserIdConfiguration(configuration);
+        var humbleActivityPubService = new HumbleActivityPubService(activityPub);
+        return obj switch
+        {
+            Follow follow => await Follow(humbleDbContext, humbleUserIdConfiguration, humbleActivityPubService, userId,
+                follow),
+            Undo undo => Undo(humbleUserIdConfiguration, dbContext, activityPub, userId, undo),
+            _ => TypedResults.BadRequest("The Object type was not supported.")
+        };
+    }
+
+    private static Results<BadRequest<string>, Accepted> Undo(
+        HumbleUserIdConfiguration humbleUserIdConfiguration,
+        ActivityPubDbContext activityPubDbContext,
+        ActivityPubService activityPubService, string userId, Undo undo)
+    {
+        switch (undo.Object?.First())
+        {
+            case Follow follow:
+                var userUrl = humbleUserIdConfiguration.UserUrl(userId);
+                var userInfo = activityPubDbContext.Users.Find(userUrl);
+                if (userInfo is null)
+                {
+                    return TypedResults.BadRequest("User could not be found.");
+                }
+                if (activityPubService.GetPersonId(follow.Actor?.First()) is not string actorId || follow.Object?.First() is not ILink { Href: Uri objectUri })
+                {
+                    return TypedResults.BadRequest($"Could not Undo Follow either because the actor was not a Link or did not have an id or because the Object was not a Link.");
+                }
+                FollowRelation? followRelation = activityPubDbContext.FollowRelations.Find(actorId, objectUri.ToString());
+                if (followRelation is null)
+                {
+                    return TypedResults.BadRequest($"Could not Undo Follow because the Actor was not following the Object.");
+                }
+                activityPubDbContext.FollowRelations.Remove(followRelation);
+                activityPubDbContext.SaveChanges();
+                return TypedResults.Accepted("Accepted");
+            default:
+                return TypedResults.BadRequest(Serialize(undo.Object));
+        }
+    }
+
+    public static async Task<Results<BadRequest<string>, Accepted>> Follow(IDbContext humblDbContext, IUserIdConfiguration userIdConfiguration,
+        IActivityPubService humbleActivityPubService, string userId, Follow follow)
+    {
+        var userUrl = userIdConfiguration.UserUrl(userId);
+        var userInfo = humblDbContext.Find(userUrl);
+        if (userInfo is null)
         {
             return TypedResults.BadRequest("User could not be found.");
         }
-
-        switch (obj)
+        if (follow.Actor is null)
         {
-            case Follow follow:
-                if (follow.Actor is null)
-                {
-                    return TypedResults.BadRequest("Follow request had no actor.");
-                }
-                if (activityPub.GetPersonId(follow.Object?.First()) is not string objectPersonId)
-                {
-                    return TypedResults.BadRequest("The Object was not a Link or did not have a id.");
-                }
-                if (objectPersonId != $"{configuration["HostUrls:Server"]}/Users/{userId}")
-                {
-                    return TypedResults.BadRequest("The Object Id did not match the address of this inbox.");
-                }
-                Uri? inbox = await activityPub.GetInboxUriAsync(follow.Actor.First());
-                if (inbox is null)
-                {
-                    return TypedResults.BadRequest("The User had no inbox specified.");
-                }
-
-                Accept accept = new Accept()
-                {
-                    Actor = new List<Link>() { new() { Href = new($"{configuration["HostUrls:Server"]}/Users/{userId}") } },
-                    Id = $"{configuration["HostUrls:Server"]}/Activity/{Guid.NewGuid()}",
-                    Object = new List<IObject>() { follow }
-                };
-                HttpResponseMessage response = await activityPub.PostAsync(accept, inbox);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    return TypedResults.BadRequest("Could not send Accept message.");
-                }
-                if (activityPub.GetPersonId(follow.Actor.First()) is not string followerId)
-                {
-                    return TypedResults.BadRequest("The Actor was not a Link or did not have a id.");
-                }
-
-                if (dbContext.FollowRelations.Find(followerId, userId) is not null)
-                {
-                    return TypedResults.Accepted("Accepted as the Actor already followed the Object.");
-                }
-                UserInfo dbUser = dbContext.Users.Find($"{configuration["HostUrls:Server"]}/Users/{userId}")!;
-                UserInfo? dbFollower = dbContext.Users.Find(followerId);
-                if (dbFollower is null)
-                {
-                    dbFollower = new("Some Follower", followerId);
-                    dbContext.Add(dbFollower);
-                }
-                dbContext.Add(new FollowRelation(dbFollower.Id, dbUser.Id));
-                dbContext.SaveChanges();
-
-                return TypedResults.Accepted("Accepted");
-            case Undo undo:
-                switch (undo.Object?.First())
-                {
-                    case Follow follow:
-                        if (activityPub.GetPersonId(follow.Actor?.First()) is not string actorId || follow.Object?.First() is not ILink { Href: Uri objectUri })
-                        {
-                            return TypedResults.BadRequest($"Could not Undo Follow either because the actor was not a Link or did not have an id or because the Object was not a Link.");
-                        }
-                        FollowRelation? followRelation = dbContext.FollowRelations.Find(actorId, objectUri.ToString());
-                        if (followRelation is null)
-                        {
-                            return TypedResults.BadRequest($"Could not Undo Follow because the Actor was not following the Object.");
-                        }
-                        dbContext.FollowRelations.Remove(followRelation);
-                        dbContext.SaveChanges();
-                        return TypedResults.Accepted("Accepted");
-                    default:
-                        return TypedResults.BadRequest(Serialize(undo.Object));
-                }
-            default:
-                return TypedResults.BadRequest("The Object type was not supported.");
+            return TypedResults.BadRequest("Follow request had no actor.");
         }
+
+        if (humbleActivityPubService.GetPersonId(follow.Object?.First()) is not string objectPersonId)
+        {
+            return TypedResults.BadRequest("The Object was not a Link or did not have a id.");
+        }
+        if (objectPersonId != userUrl.Id)
+        {
+            return TypedResults.BadRequest("The Object Id did not match the address of this inbox.");
+        }
+
+        var inbox = await humbleActivityPubService.GetInboxUriAsync(follow.Actor.First());
+        if (inbox is null)
+        {
+            return TypedResults.BadRequest("The User had no inbox specified.");
+        }
+
+        Accept accept = new Accept()
+        {
+            Actor = new List<Link>() { new() { Href = new(userUrl.Id) } },
+            Id = userIdConfiguration.Activity(),
+            Object = new List<IObject>() { follow }
+        };
+        var response = await humbleActivityPubService.PostAsync(accept, inbox);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            return TypedResults.BadRequest("Could not send Accept message.");
+        }
+
+        if (humbleActivityPubService.GetPersonId(follow.Actor.First()) is not string followerId)
+        {
+            return TypedResults.BadRequest("The Actor was not a Link or did not have a id.");
+        }
+
+        if (humblDbContext.Find(userId, followerId) is not null)
+        {
+            return TypedResults.Accepted("Accepted as the Actor already followed the Object.");
+        }
+
+        var dbFollower = humblDbContext.DbFollower(followerId);
+        if (dbFollower is null)
+        {
+            dbFollower = new("Some Follower", followerId);
+            humblDbContext.Add(dbFollower);
+        }
+        humblDbContext.Add(dbFollower, userInfo);
+        await humblDbContext.SaveChanges();
+
+        return TypedResults.Accepted("Accepted");
     }
 
     public static Results<BadRequest<string>, Ok<IObjectOrLink>> Outbox(string userId, IConfiguration configuration, ActivityPubDbContext dbContext, IOutboxService outboxService)
@@ -215,5 +244,119 @@ public static class UsersApi
             TotalItems = (uint)relations.Count()
         };
         return TypedResults.Ok(collection);
+    }
+}
+
+public interface IActivityPubService
+{
+    string? GetPersonId(IObjectOrLink? objectLink);
+    Task<Uri?> GetInboxUriAsync(IObjectOrLink person);
+
+    Task<HttpResponseMessage> PostAsync(Accept accept,
+        Uri inbox);
+}
+
+public class HumbleActivityPubService : IActivityPubService
+{
+    public ActivityPubService ActivityPub { get; }
+
+    public HumbleActivityPubService(ActivityPubService activityPub)
+    {
+        ActivityPub = activityPub;
+    }
+
+    public string? GetPersonId(IObjectOrLink? objectLink)
+    {
+        return ActivityPub.GetPersonId(objectLink);
+    }
+
+    public async Task<Uri?> GetInboxUriAsync(IObjectOrLink person)
+    {
+        return await ActivityPub.GetInboxUriAsync(person);
+    }
+
+    public async Task<HttpResponseMessage> PostAsync(Accept accept,
+        Uri inbox)
+    {
+        return await ActivityPub.PostAsync(accept, inbox);
+    }
+}
+
+public interface IDbContext
+{
+    UserInfo? Find(UserId userUrl);
+    FollowRelation? Find(string userId, string followerId);
+    UserInfo? DbFollower(string followerId);
+    void Add(UserInfo dbFollower);
+    void Add(UserInfo dbFollower, UserInfo userInfo);
+    Task SaveChanges();
+}
+
+public class HumbleDbContext : IDbContext
+{
+    public ActivityPubDbContext DbContext { get; }
+
+    public HumbleDbContext(ActivityPubDbContext dbContext)
+    {
+        DbContext = dbContext;
+    }
+
+    public UserInfo? Find(UserId userUrl)
+    {
+        return DbContext.Users.Find(userUrl.Id);
+    }
+
+    public FollowRelation? Find(string userId, string followerId)
+    {
+        return DbContext.FollowRelations.Find(followerId, userId);
+    }
+
+    public UserInfo? DbFollower(string followerId)
+    {
+        UserInfo? dbFollower = DbContext.Users.Find(followerId);
+        return dbFollower;
+    }
+
+    public void Add(UserInfo dbFollower)
+    {
+        DbContext.Add(dbFollower);
+    }
+
+    public void Add(UserInfo dbFollower, UserInfo userInfo)
+    {
+        DbContext.Add(new FollowRelation(dbFollower.Id, userInfo.Id));
+    }
+
+    public async Task SaveChanges()
+    {
+        await DbContext.SaveChangesAsync();
+    }
+}
+
+public interface IUserIdConfiguration
+{
+    UserId UserUrl(string userId);
+    string? Activity();
+}
+
+public record struct UserId(string Id);
+
+public class HumbleUserIdConfiguration : IUserIdConfiguration
+{
+    public IConfiguration Configuration { get; }
+
+    public HumbleUserIdConfiguration(IConfiguration configuration)
+    {
+        Configuration = configuration;
+    }
+
+    public UserId UserUrl(string userId)
+    {
+        return new UserId($"{Configuration["HostUrls:Server"]}/Users/{userId}");
+    }
+
+    public string Activity()
+    {
+        return $"{Configuration["HostUrls:Server"]}/Activity/{Guid.NewGuid()}";
     }
 }
