@@ -1,7 +1,6 @@
 ﻿using System.Net;
 using KristofferStrube.ActivityPubBotDotNet.Server;
 using KristofferStrube.ActivityStreams;
-using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace KristofferStrube.ActivityPubBotDotNet.Tests;
 
@@ -54,7 +53,7 @@ public class UsersApi_Approvals
         IEnumerable<(HttpResponseMessage, Uri)[]> inboxes = [[], [(new HttpResponseMessage(), new Uri("https://api.kristoffer.com/users/43"))]];
 
         var verifySettings = new VerifySettings();
-        verifySettings.AutoVerify(false, true);
+        // verifySettings.AutoVerify(false, true);
         await Combination(settings:verifySettings).Verify(DoFollow,
             userIds,
             existingUserIds,
@@ -64,7 +63,7 @@ public class UsersApi_Approvals
             );
     }
 
-    private static async Task<Results<BadRequest<string>, Accepted>> DoFollow(string userId,
+    private static async Task<object> DoFollow(string userId,
         string[] existingUserIds,
         Follow follow,
         FollowRelation[] relations,
@@ -86,7 +85,14 @@ public class UsersApi_Approvals
             humbleActivityPubService.accepts[inbox.Item2] = inbox.Item1;
         }
 
-        return await UsersApi.Follow(humblDbContext, fakeUserIdConfiguration, humbleActivityPubService, userId, follow);
+        var results = await UsersApi.Follow(humblDbContext, fakeUserIdConfiguration, humbleActivityPubService, userId, follow);
+
+
+        return new
+        {
+            results,
+            humblDbContext.Commited
+        };
 
         UserInfo ToUserInfo(string existingUserId)
         {
@@ -169,7 +175,14 @@ public class FakeDbContext : IDbContext
 
     public async Task SaveChanges()
     {
+        Commited = new
+        {
+            users,
+            followrelations,
+        };
     }
+
+    public object Commited { get; set; }
 }
 
 internal class Any
