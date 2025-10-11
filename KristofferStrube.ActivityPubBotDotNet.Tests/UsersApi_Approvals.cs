@@ -1,5 +1,6 @@
 ﻿using KristofferStrube.ActivityPubBotDotNet.Server;
 using KristofferStrube.ActivityStreams;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace KristofferStrube.ActivityPubBotDotNet.Tests;
 
@@ -8,9 +9,19 @@ public class UsersApi_Approvals
     [Fact]
     public async Task Follow()
     {
-        var inbox = await UsersApi.Follow(new FakeDbContext(), new FakeUserIdConfiguration(), new FakeActivitiyPubService(), Any.UserId, Any.Follow());
+        await Verify(await DoFollow());
+    }
 
-        await Verify(inbox);
+    private static async Task<Results<BadRequest<string>, Accepted>> DoFollow()
+    {
+        var humblDbContext = new FakeDbContext();
+        var fakeUserIdConfiguration = new FakeUserIdConfiguration();
+        var humbleActivityPubService = new FakeActivitiyPubService();
+        var userId = Any.UserId;
+        var follow = Any.Follow();
+
+        var inbox = await UsersApi.Follow(humblDbContext, fakeUserIdConfiguration, humbleActivityPubService, userId, follow);
+        return inbox;
     }
 }
 
