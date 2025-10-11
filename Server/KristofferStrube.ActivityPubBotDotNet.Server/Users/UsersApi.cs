@@ -142,7 +142,7 @@ public static class UsersApi
             return TypedResults.BadRequest("The Object Id did not match the address of this inbox.");
         }
 
-        var inbox = await humbleActivityPubService.GetInbox(follow.Actor.First());
+        var inbox = await humbleActivityPubService.GetInboxUriAsync(follow.Actor.First());
         if (inbox is null)
         {
             return TypedResults.BadRequest("The User had no inbox specified.");
@@ -250,7 +250,7 @@ public static class UsersApi
 public interface IActivityPubService
 {
     string? GetPersonId(IObjectOrLink? objectLink);
-    Task<Uri?> GetInbox(IObjectOrLink actorLink);
+    Task<Uri?> GetInboxUriAsync(IObjectOrLink person);
 
     Task<HttpResponseMessage> PostAsync(Accept accept,
         Uri inbox);
@@ -267,21 +267,18 @@ public class HumbleActivityPubService : IActivityPubService
 
     public string? GetPersonId(IObjectOrLink? objectLink)
     {
-        var personId = ActivityPub.GetPersonId(objectLink);
-        return personId;
+        return ActivityPub.GetPersonId(objectLink);
     }
 
-    public async Task<Uri?> GetInbox(IObjectOrLink actorLink)
+    public async Task<Uri?> GetInboxUriAsync(IObjectOrLink person)
     {
-        Uri? inbox = await ActivityPub.GetInboxUriAsync(actorLink);
-        return inbox;
+        return await ActivityPub.GetInboxUriAsync(person);
     }
 
     public async Task<HttpResponseMessage> PostAsync(Accept accept,
         Uri inbox)
     {
-        HttpResponseMessage response = await ActivityPub.PostAsync(accept, inbox);
-        return response;
+        return await ActivityPub.PostAsync(accept, inbox);
     }
 }
 

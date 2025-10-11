@@ -1,4 +1,5 @@
-﻿using KristofferStrube.ActivityPubBotDotNet.Server;
+﻿using System.Net;
+using KristofferStrube.ActivityPubBotDotNet.Server;
 using KristofferStrube.ActivityStreams;
 using Microsoft.AspNetCore.Http.HttpResults;
 
@@ -11,6 +12,9 @@ public class UsersApi_Approvals
     {
         string[] userIds = ["42"];
         IEnumerable<string[]> existingUserIds = [["42"], []];
+        IEnumerable<FollowRelation[]> followRelations = [
+            [new FollowRelation("42", "43")],
+            []];
         IEnumerable<Follow> follows =
         [
             new(),
@@ -20,51 +24,98 @@ public class UsersApi_Approvals
             },
             new()
             {
-                Actor = [new Person { Id = "43" }],
+                Actor = [new Person { Id = FakeUserIdConfiguration.CreateUserId("43").Id }],
                 Object = [new Person { Id = "NOT ID" }]
             },
             new ()
             {
-                Actor = [new Person { Id = "43" }],
+                Actor = [new Person { Id = FakeUserIdConfiguration.CreateUserId("43").Id }],
                 Object = [new Person { Id = FakeUserIdConfiguration.CreateUserId("42").Id }],
-            }
+            },
+            new ()
+            {
+                Actor = [new Person { Id = FakeUserIdConfiguration.CreateUserId("43").Id,
+                    Inbox = new Link()
+                {
+                    Href = new Uri("https://api.kristoffer.com/users/43")
+                }}],
+                Object = [new Person { Id = FakeUserIdConfiguration.CreateUserId("42").Id }],
+            },
+            new ()
+            {
+                Actor = [new Person { Id = null, Inbox = new Link()
+                {
+                    Href = new Uri("https://api.kristoffer.com/users/43")
+                }}],
+                Object = [new Person { Id = FakeUserIdConfiguration.CreateUserId("42").Id }],
+            },
         ];
+
+        IEnumerable<(HttpResponseMessage, Uri)[]> inboxes = [[], [(new HttpResponseMessage(), new Uri("https://api.kristoffer.com/users/43"))]];
 
         var verifySettings = new VerifySettings();
         verifySettings.AutoVerify(false, true);
-        await Combination(settings:verifySettings).Verify(DoFollow, userIds, existingUserIds, follows);
+        await Combination(settings:verifySettings).Verify(DoFollow,
+            userIds,
+            existingUserIds,
+            follows,
+            followRelations,
+            inboxes
+            );
     }
 
-    private static async Task<Results<BadRequest<string>, Accepted>> DoFollow(string userId, string[] existingUserIds, Follow follow)
+    private static async Task<Results<BadRequest<string>, Accepted>> DoFollow(string userId,
+        string[] existingUserIds,
+        Follow follow,
+        FollowRelation[] relations,
+        (HttpResponseMessage, Uri)[] inboxes
+        )
     {
         var humblDbContext = new FakeDbContext();
         var fakeUserIdConfiguration = new FakeUserIdConfiguration();
         var humbleActivityPubService = new FakeActivitiyPubService();
 
+        foreach (var r in relations)
+            humblDbContext.Add(new UserInfo($"User for: {r.FollowerId}", r.FollowerId), ToUserInfo(r.FollowedId));
+
         foreach (var existingUserId in existingUserIds)
-            humblDbContext.Add(new UserInfo("User for: {existingUserId}", fakeUserIdConfiguration.UserUrl(existingUserId).Id));
+            humblDbContext.Add(ToUserInfo(existingUserId));
+
+        foreach (var inbox in inboxes)
+        {
+            humbleActivityPubService.accepts[inbox.Item2] = inbox.Item1;
+        }
 
         return await UsersApi.Follow(humblDbContext, fakeUserIdConfiguration, humbleActivityPubService, userId, follow);
+
+        UserInfo ToUserInfo(string existingUserId)
+        {
+            return new UserInfo($"User for: {existingUserId}", fakeUserIdConfiguration.UserUrl(existingUserId).Id);
+        }
     }
 }
 
 public class FakeActivitiyPubService : IActivityPubService
 {
-    private Dictionary<IObjectOrLink, Uri> inboxes = new();
-
+    public Dictionary<Uri, HttpResponseMessage> accepts = new();
     public string? GetPersonId(IObjectOrLink? objectLink)
     {
         return ActivityPubService.PersonId(objectLink);
     }
 
-    public async Task<Uri?> GetInbox(IObjectOrLink actorLink)
+    public async Task<Uri?> GetInboxUriAsync(IObjectOrLink person)
     {
-        return inboxes.GetValueOrDefault(actorLink);
+        if (person is Actor actorObject)
+        {
+            return actorObject.Inbox?.Href;
+        }
+
+        return null;
     }
 
     public async Task<HttpResponseMessage> PostAsync(Accept accept, Uri inbox)
     {
-        throw new NotImplementedException();
+        return accepts.GetValueOrDefault(inbox) ?? new HttpResponseMessage(HttpStatusCode.NotFound);;
     }
 }
 
@@ -82,13 +133,14 @@ public class FakeUserIdConfiguration : IUserIdConfiguration
 
     public string? Activity()
     {
-        throw new NotImplementedException();
+        return CreateUserId($"activity/{Guid.NewGuid()}").Id;
     }
 }
 
 public class FakeDbContext : IDbContext
 {
     private Dictionary<UserId, UserInfo> users = new();
+    private Dictionary<(string,string), FollowRelation> followrelations = new();
 
     public UserInfo? Find(UserId userUrl)
     {
@@ -97,12 +149,12 @@ public class FakeDbContext : IDbContext
 
     public FollowRelation? Find(string userId, string followerId)
     {
-        throw new NotImplementedException();
+        return followrelations.GetValueOrDefault((userId, followerId));
     }
 
     public UserInfo? DbFollower(string followerId)
     {
-        throw new NotImplementedException();
+        return users.GetValueOrDefault(new UserId(followerId));
     }
 
     public void Add(UserInfo dbFollower)
@@ -112,15 +164,14 @@ public class FakeDbContext : IDbContext
 
     public void Add(UserInfo dbFollower, UserInfo userInfo)
     {
-        throw new NotImplementedException();
+        followrelations[(dbFollower.Id, userInfo.Id)] = new FollowRelation(dbFollower.Id, userInfo.Id);
     }
 
     public async Task SaveChanges()
     {
-        throw new NotImplementedException();
     }
 }
 
-class Any
+internal class Any
 {
 }
