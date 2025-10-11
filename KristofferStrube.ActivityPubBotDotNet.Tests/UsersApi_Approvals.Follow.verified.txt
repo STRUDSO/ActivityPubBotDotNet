@@ -1,5 +1,47 @@
 ﻿{
-  42: {
+  42, 42, KristofferStrube.ActivityStreams.Follow: {
+    Result: {
+      Value: Follow request had no actor.,
+      StatusCode: 400
+    }
+  },
+  42, 42, KristofferStrube.ActivityStreams.Follow: {
+    Result: {
+      Value: The Object was not a Link or did not have a id.,
+      StatusCode: 400
+    }
+  },
+  42, 42, KristofferStrube.ActivityStreams.Follow: {
+    Result: {
+      Value: The Object Id did not match the address of this inbox.,
+      StatusCode: 400
+    }
+  },
+  42, 42, KristofferStrube.ActivityStreams.Follow: {
+    Result: {
+      Value: The User had no inbox specified.,
+      StatusCode: 400
+    }
+  },
+  42, [], KristofferStrube.ActivityStreams.Follow: {
+    Result: {
+      Value: User could not be found.,
+      StatusCode: 400
+    }
+  },
+  42, [], KristofferStrube.ActivityStreams.Follow: {
+    Result: {
+      Value: User could not be found.,
+      StatusCode: 400
+    }
+  },
+  42, [], KristofferStrube.ActivityStreams.Follow: {
+    Result: {
+      Value: User could not be found.,
+      StatusCode: 400
+    }
+  },
+  42, [], KristofferStrube.ActivityStreams.Follow: {
     Result: {
       Value: User could not be found.,
       StatusCode: 400

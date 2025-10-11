@@ -76,6 +76,11 @@ public class ActivityPubService
 
     public string? GetPersonId(IObjectOrLink? person)
     {
+        return PersonId(person);
+    }
+
+    public static string? PersonId(IObjectOrLink? person)
+    {
         if (person is ILink { Href: Uri href })
         {
             return href.ToString();
@@ -84,6 +89,7 @@ public class ActivityPubService
         {
             return person.Id;
         }
+
         return null;
     }
 

@@ -10,17 +10,39 @@ public class UsersApi_Approvals
     public async Task Follow()
     {
         string[] userIds = ["42"];
+        IEnumerable<string[]> existingUserIds = [["42"], []];
+        IEnumerable<Follow> follows =
+        [
+            new(),
+            new()
+            {
+                Actor = []
+            },
+            new()
+            {
+                Actor = [new Person { Id = "43" }],
+                Object = [new Person { Id = "NOT ID" }]
+            },
+            new ()
+            {
+                Actor = [new Person { Id = "43" }],
+                Object = [new Person { Id = FakeUserIdConfiguration.CreateUserId("42").Id }],
+            }
+        ];
+
         var verifySettings = new VerifySettings();
         verifySettings.AutoVerify(false, true);
-        await Combination(settings:verifySettings).Verify(DoFollow, userIds);
+        await Combination(settings:verifySettings).Verify(DoFollow, userIds, existingUserIds, follows);
     }
 
-    private static async Task<Results<BadRequest<string>, Accepted>> DoFollow(string userId)
+    private static async Task<Results<BadRequest<string>, Accepted>> DoFollow(string userId, string[] existingUserIds, Follow follow)
     {
         var humblDbContext = new FakeDbContext();
         var fakeUserIdConfiguration = new FakeUserIdConfiguration();
         var humbleActivityPubService = new FakeActivitiyPubService();
-        var follow = Any.Follow();
+
+        foreach (var existingUserId in existingUserIds)
+            humblDbContext.Add(new UserInfo("User for: {existingUserId}", fakeUserIdConfiguration.UserUrl(existingUserId).Id));
 
         return await UsersApi.Follow(humblDbContext, fakeUserIdConfiguration, humbleActivityPubService, userId, follow);
     }
@@ -28,14 +50,16 @@ public class UsersApi_Approvals
 
 public class FakeActivitiyPubService : IActivityPubService
 {
+    private Dictionary<IObjectOrLink, Uri> inboxes = new();
+
     public string? GetPersonId(IObjectOrLink? objectLink)
     {
-        throw new NotImplementedException();
+        return ActivityPubService.PersonId(objectLink);
     }
 
     public async Task<Uri?> GetInbox(IObjectOrLink actorLink)
     {
-        throw new NotImplementedException();
+        return inboxes.GetValueOrDefault(actorLink);
     }
 
     public async Task<HttpResponseMessage> PostAsync(Accept accept, Uri inbox)
@@ -47,6 +71,11 @@ public class FakeActivitiyPubService : IActivityPubService
 public class FakeUserIdConfiguration : IUserIdConfiguration
 {
     public UserId UserUrl(string userId)
+    {
+        return CreateUserId(userId);
+    }
+
+    public static UserId CreateUserId(string userId)
     {
         return new UserId(new Uri("http://localhost/" + userId).ToString());
     }
@@ -78,7 +107,7 @@ public class FakeDbContext : IDbContext
 
     public void Add(UserInfo dbFollower)
     {
-        throw new NotImplementedException();
+        users.Add(new UserId(dbFollower.Id), dbFollower);
     }
 
     public void Add(UserInfo dbFollower, UserInfo userInfo)
@@ -94,10 +123,4 @@ public class FakeDbContext : IDbContext
 
 class Any
 {
-    public static string UserId => Guid.NewGuid().ToString();
-
-    public static Follow Follow()
-    {
-        return new Follow();
-    }
 }
