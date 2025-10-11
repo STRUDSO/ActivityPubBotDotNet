@@ -79,44 +79,40 @@ public static class UsersApi
         var humbleDbContext = new HumbleDbContext(dbContext);
         var humbleUserIdConfiguration = new HumbleUserIdConfiguration(configuration);
         var humbleActivityPubService = new HumbleActivityPubService(activityPub);
-        switch (obj)
+        return obj switch
         {
-            case Follow follow:
-                return await Follow(humbleDbContext, humbleUserIdConfiguration, humbleActivityPubService, userId, follow);
-            case Undo undo:
-                return Undo(humbleDbContext, humbleUserIdConfiguration, humbleActivityPubService, userId, undo);
-            default:
-                return TypedResults.BadRequest("The Object type was not supported.");
-        }
+            Follow follow => await Follow(humbleDbContext, humbleUserIdConfiguration, humbleActivityPubService, userId,
+                follow),
+            Undo undo => Undo(humbleUserIdConfiguration, dbContext, activityPub, userId, undo),
+            _ => TypedResults.BadRequest("The Object type was not supported.")
+        };
     }
 
     private static Results<BadRequest<string>, Accepted> Undo(
-        HumbleDbContext humbleDbContext,
         HumbleUserIdConfiguration humbleUserIdConfiguration,
-        HumbleActivityPubService humbleActivityPubService,
-        string userId,
-        Undo undo)
+        ActivityPubDbContext activityPubDbContext,
+        ActivityPubService activityPubService, string userId, Undo undo)
     {
         switch (undo.Object?.First())
         {
             case Follow follow:
                 var userUrl = humbleUserIdConfiguration.UserUrl(userId);
-                var userInfo = humbleDbContext.DbContext.Users.Find(userUrl);
+                var userInfo = activityPubDbContext.Users.Find(userUrl);
                 if (userInfo is null)
                 {
                     return TypedResults.BadRequest("User could not be found.");
                 }
-                if (humbleActivityPubService.ActivityPub.GetPersonId(follow.Actor?.First()) is not string actorId || follow.Object?.First() is not ILink { Href: Uri objectUri })
+                if (activityPubService.GetPersonId(follow.Actor?.First()) is not string actorId || follow.Object?.First() is not ILink { Href: Uri objectUri })
                 {
                     return TypedResults.BadRequest($"Could not Undo Follow either because the actor was not a Link or did not have an id or because the Object was not a Link.");
                 }
-                FollowRelation? followRelation = humbleDbContext.DbContext.FollowRelations.Find(actorId, objectUri.ToString());
+                FollowRelation? followRelation = activityPubDbContext.FollowRelations.Find(actorId, objectUri.ToString());
                 if (followRelation is null)
                 {
                     return TypedResults.BadRequest($"Could not Undo Follow because the Actor was not following the Object.");
                 }
-                humbleDbContext.DbContext.FollowRelations.Remove(followRelation);
-                humbleDbContext.DbContext.SaveChanges();
+                activityPubDbContext.FollowRelations.Remove(followRelation);
+                activityPubDbContext.SaveChanges();
                 return TypedResults.Accepted("Accepted");
             default:
                 return TypedResults.BadRequest(Serialize(undo.Object));
