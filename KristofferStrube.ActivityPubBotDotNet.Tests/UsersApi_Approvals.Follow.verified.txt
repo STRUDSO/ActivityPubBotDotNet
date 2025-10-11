@@ -1,6 +1,8 @@
 ﻿{
-  Result: {
-    Value: User could not be found.,
-    StatusCode: 400
+  42: {
+    Result: {
+      Value: User could not be found.,
+      StatusCode: 400
+    }
   }
 }

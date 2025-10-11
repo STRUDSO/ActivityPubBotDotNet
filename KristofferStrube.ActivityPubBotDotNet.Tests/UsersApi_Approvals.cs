@@ -9,19 +9,20 @@ public class UsersApi_Approvals
     [Fact]
     public async Task Follow()
     {
-        await Verify(await DoFollow());
+        string[] userIds = ["42"];
+        var verifySettings = new VerifySettings();
+        verifySettings.AutoVerify(false, true);
+        await Combination(settings:verifySettings).Verify(DoFollow, userIds);
     }
 
-    private static async Task<Results<BadRequest<string>, Accepted>> DoFollow()
+    private static async Task<Results<BadRequest<string>, Accepted>> DoFollow(string userId)
     {
         var humblDbContext = new FakeDbContext();
         var fakeUserIdConfiguration = new FakeUserIdConfiguration();
         var humbleActivityPubService = new FakeActivitiyPubService();
-        var userId = Any.UserId;
         var follow = Any.Follow();
 
-        var inbox = await UsersApi.Follow(humblDbContext, fakeUserIdConfiguration, humbleActivityPubService, userId, follow);
-        return inbox;
+        return await UsersApi.Follow(humblDbContext, fakeUserIdConfiguration, humbleActivityPubService, userId, follow);
     }
 }
 
