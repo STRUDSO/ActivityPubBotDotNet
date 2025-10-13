@@ -2,41 +2,50 @@ using KristofferStrube.ActivityStreams;
 
 namespace KristofferStrube.ActivityPubBotDotNet.Server;
 
-public class HumbleActivityPub
+public interface IActivityPub
 {
-    public ActivityPubService ActivityPub { get; }
+    string? FollowerId(Follow follow);
+    string? ObjectPersonId(Follow follow);
+    Task<Uri?> Uri(Follow follow);
+    Task<HttpResponseMessage> Accept(Accept accept, Uri inbox);
+    string? FollowerId2(Follow follow);
+}
+
+public class HumbleActivityPub : IActivityPub
+{
+    private readonly ActivityPubService _activityPub;
 
     public HumbleActivityPub(ActivityPubService activityPub)
     {
-        ActivityPub = activityPub;
+        _activityPub = activityPub;
     }
 
     public string? FollowerId(Follow follow)
     {
-        var followerId = ActivityPub.GetPersonId(follow.Actor.First());
+        var followerId = _activityPub.GetPersonId(follow.Actor.First());
         return followerId;
     }
 
     public string? ObjectPersonId(Follow follow)
     {
-        var objectPersonId = ActivityPub.GetPersonId(follow.Object?.First());
+        var objectPersonId = _activityPub.GetPersonId(follow.Object?.First());
         return objectPersonId;
     }
 
     public async Task<Uri?> Uri(Follow follow)
     {
-        Uri? inbox = await ActivityPub.GetInboxUriAsync(follow.Actor.First());
+        Uri? inbox = await _activityPub.GetInboxUriAsync(follow.Actor.First());
         return inbox;
     }
 
     public async Task<HttpResponseMessage> Accept(Accept accept, Uri inbox)
     {
-        HttpResponseMessage response = await ActivityPub.PostAsync(accept, inbox);
+        HttpResponseMessage response = await _activityPub.PostAsync(accept, inbox);
         return response;
     }
 
     public string? FollowerId2(Follow follow)
     {
-        return ActivityPub.GetPersonId(follow.Actor?.First());
+        return _activityPub.GetPersonId(follow.Actor?.First());
     }
 }

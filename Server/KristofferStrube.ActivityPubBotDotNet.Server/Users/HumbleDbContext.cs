@@ -1,41 +1,51 @@
 namespace KristofferStrube.ActivityPubBotDotNet.Server;
 
-public class HumbleDbContext
+public interface IDbContext
 {
-    public ActivityPubDbContext DbContext { get; }
+    UserInfo? Find(string userUrl);
+    FollowRelation? FindRelations(string userId, string followerId);
+    void AddUser(UserInfo dbFollower);
+    void AddRelation(UserInfo dbFollower, UserInfo userInfo);
+    void SaveChanges();
+    void RemoveRelation(FollowRelation followRelation);
+}
 
-    public HumbleDbContext(ActivityPubDbContext dbContext)
+public class DbContext : IDbContext
+{
+    private readonly ActivityPubDbContext _dbContext;
+
+    public DbContext(ActivityPubDbContext dbContext)
     {
-        DbContext = dbContext;
+        _dbContext = dbContext;
     }
 
     public UserInfo? Find(string userUrl)
     {
-        return DbContext.Users.Find(userUrl);
+        return _dbContext.Users.Find(userUrl);
     }
 
     public FollowRelation? FindRelations(string userId, string followerId)
     {
-        return DbContext.FollowRelations.Find(followerId, userId);
+        return _dbContext.FollowRelations.Find(followerId, userId);
     }
 
     public void AddUser(UserInfo dbFollower)
     {
-        DbContext.Add(dbFollower);
+        _dbContext.Add(dbFollower);
     }
 
     public void AddRelation(UserInfo dbFollower, UserInfo userInfo)
     {
-        DbContext.Add(new FollowRelation(dbFollower.Id, userInfo.Id));
+        _dbContext.Add(new FollowRelation(dbFollower.Id, userInfo.Id));
     }
 
     public void SaveChanges()
     {
-        DbContext.SaveChanges();
+        _dbContext.SaveChanges();
     }
 
     public void RemoveRelation(FollowRelation followRelation)
     {
-        DbContext.FollowRelations.Remove(followRelation);
+        _dbContext.FollowRelations.Remove(followRelation);
     }
 }

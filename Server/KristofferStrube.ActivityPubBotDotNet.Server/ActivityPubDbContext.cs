@@ -2,7 +2,7 @@
 
 namespace KristofferStrube.ActivityPubBotDotNet.Server;
 
-public class ActivityPubDbContext : DbContext
+public class ActivityPubDbContext : Microsoft.EntityFrameworkCore.DbContext
 {
     public ActivityPubDbContext(DbContextOptions<ActivityPubDbContext> options) : base(options) { }
 

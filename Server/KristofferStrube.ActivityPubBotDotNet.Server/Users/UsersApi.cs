@@ -69,106 +69,10 @@ public static class UsersApi
         });
     }
 
-    public static async Task<Results<BadRequest<string>, Accepted>> Inbox(string userId, [FromBody] IObject obj, IConfiguration configuration_, ActivityPubDbContext dbContext_, ActivityPubService activityPub_)
+    public static async Task<Results<BadRequest<string>, Accepted>> Inbox(string userId, [FromBody] IObject obj, IConfiguration configuration, ActivityPubDbContext dbContext, ActivityPubService activityPub)
     {
-        var humbleConfiguration = new HumbleConfiguration(configuration_);
-        var humbleDbContext = new HumbleDbContext(dbContext_);
-        var humbleActivityPub = new HumbleActivityPub(activityPub_);
-
-        var userUrl = humbleConfiguration.UserUrl(userId);
-        var userInfo = humbleDbContext.Find(userUrl);
-        if (userInfo is null)
-        {
-            return TypedResults.BadRequest("User could not be found.");
-        }
-
-        switch (obj)
-        {
-            case Follow follow:
-            {
-                if (follow.Actor is null)
-                {
-                    return TypedResults.BadRequest("Follow request had no actor.");
-                }
-
-                var followerId = humbleActivityPub.FollowerId(follow);
-                var objectPersonId = humbleActivityPub.ObjectPersonId(follow);
-                if (objectPersonId is null)
-                {
-                    return TypedResults.BadRequest("The Object was not a Link or did not have a id.");
-                }
-
-                if (objectPersonId != userUrl)
-                {
-                    return TypedResults.BadRequest("The Object Id did not match the address of this inbox.");
-                }
-
-                if (followerId is null)
-                {
-                    return TypedResults.BadRequest("The Actor was not a Link or did not have a id.");
-                }
-
-                var inbox = await humbleActivityPub.Uri(follow);
-                if (inbox is null)
-                {
-                    return TypedResults.BadRequest("The User had no inbox specified.");
-                }
-
-                Accept accept = new Accept()
-                {
-                    Actor = new List<Link>() { new() { Href = new(userUrl) } },
-                    Id = humbleConfiguration.Activity(),
-                    Object = new List<IObject>() { follow }
-                };
-                var response = await humbleActivityPub.Accept(accept, inbox);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    return TypedResults.BadRequest("Could not send Accept message.");
-                }
-
-                if (humbleDbContext.FindRelations(userId, followerId) is not null)
-                {
-                    return TypedResults.Accepted("Accepted as the Actor already followed the Object.");
-                }
-
-                UserInfo? dbFollower = humbleDbContext.Find(followerId);
-                if (dbFollower is null)
-                {
-                    dbFollower = new("Some Follower", followerId);
-                    humbleDbContext.AddUser(dbFollower);
-                }
-
-                humbleDbContext.AddRelation(dbFollower, userInfo);
-                humbleDbContext.SaveChanges();
-
-                return TypedResults.Accepted("Accepted");
-            }
-            case Undo undo:
-                switch (undo.Object?.First())
-                {
-                    case Follow follow:
-                        var followerId = humbleActivityPub.FollowerId2(follow);
-                        var objectPersonId = follow.Object?.First();
-                        if (followerId is null || objectPersonId is not ILink { Href: { } followedId })
-                        {
-                            return TypedResults.BadRequest("Could not Undo Follow either because the actor was not a Link or did not have an id or because the Object was not a Link.");
-                        }
-
-                        FollowRelation? followRelation = humbleDbContext.FindRelations(followerId, followedId.ToString());
-                        if (followRelation is null)
-                        {
-                            return TypedResults.BadRequest("Could not Undo Follow because the Actor was not following the Object.");
-                        }
-                        humbleDbContext.RemoveRelation(followRelation);
-                        humbleDbContext.SaveChanges();
-                        return TypedResults.Accepted("Accepted");
-                    default:
-                        return TypedResults.BadRequest(Serialize(undo.Object));
-                }
-            default:
-                return TypedResults.BadRequest("The Object type was not supported.");
-        }
+        var commandHandler = new HumbleInboxCommandHandler(new HumbleConfiguration(configuration), new DbContext(dbContext), new HumbleActivityPub(activityPub));
+        return await commandHandler.Execute(new InboxCommand(userId, obj));
     }
 
     public static Results<BadRequest<string>, Ok<IObjectOrLink>> Outbox(string userId, IConfiguration configuration, ActivityPubDbContext dbContext, IOutboxService outboxService)

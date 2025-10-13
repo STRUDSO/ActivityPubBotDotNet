@@ -1,22 +1,28 @@
 namespace KristofferStrube.ActivityPubBotDotNet.Server;
 
-public class HumbleConfiguration
+public interface IUserConfiguration
 {
-    public IConfiguration Configuration { get; }
+    string UserUrl(string userId);
+    string Activity();
+}
+
+public class HumbleConfiguration : IUserConfiguration
+{
+    private readonly IConfiguration _configuration;
 
     public HumbleConfiguration(IConfiguration configuration)
     {
-        Configuration = configuration;
+        _configuration = configuration;
     }
 
     public string UserUrl(string userId)
     {
-        var userUrl = $"{Configuration["HostUrls:Server"]}/Users/{userId}";
+        var userUrl = $"{_configuration["HostUrls:Server"]}/Users/{userId}";
         return userUrl;
     }
 
     public string Activity()
     {
-        return $"{Configuration["HostUrls:Server"]}/Activity/{Guid.NewGuid()}";
+        return $"{_configuration["HostUrls:Server"]}/Activity/{Guid.NewGuid()}";
     }
 }
