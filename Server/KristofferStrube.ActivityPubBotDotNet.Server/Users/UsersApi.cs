@@ -75,8 +75,8 @@ public static class UsersApi
         var humbleDbContext = new HumbleDbContext(dbContext_);
         var humbleActivityPub = new HumbleActivityPub(activityPub_);
 
-        var userUrl = $"{humbleConfiguration.Configuration["HostUrls:Server"]}/Users/{userId}";
-        var userInfo = humbleDbContext.DbContext.Users.Find(userUrl);
+        var userUrl = humbleConfiguration.UserUrl(userId);
+        var userInfo = humbleDbContext.Find(userUrl);
         if (userInfo is null)
         {
             return TypedResults.BadRequest("User could not be found.");
@@ -91,8 +91,8 @@ public static class UsersApi
                     return TypedResults.BadRequest("Follow request had no actor.");
                 }
 
-                var followerId = humbleActivityPub.ActivityPub.GetPersonId(follow.Actor.First());
-                var objectPersonId = humbleActivityPub.ActivityPub.GetPersonId(follow.Object?.First());
+                var followerId = humbleActivityPub.FollowerId(follow);
+                var objectPersonId = humbleActivityPub.ObjectPersonId(follow);
                 if (objectPersonId is null)
                 {
                     return TypedResults.BadRequest("The Object was not a Link or did not have a id.");
@@ -108,7 +108,7 @@ public static class UsersApi
                     return TypedResults.BadRequest("The Actor was not a Link or did not have a id.");
                 }
 
-                Uri? inbox = await humbleActivityPub.ActivityPub.GetInboxUriAsync(follow.Actor.First());
+                var inbox = await humbleActivityPub.Uri(follow);
                 if (inbox is null)
                 {
                     return TypedResults.BadRequest("The User had no inbox specified.");
@@ -117,30 +117,30 @@ public static class UsersApi
                 Accept accept = new Accept()
                 {
                     Actor = new List<Link>() { new() { Href = new(userUrl) } },
-                    Id = $"{humbleConfiguration.Configuration["HostUrls:Server"]}/Activity/{Guid.NewGuid()}",
+                    Id = humbleConfiguration.Activity(),
                     Object = new List<IObject>() { follow }
                 };
-                HttpResponseMessage response = await humbleActivityPub.ActivityPub.PostAsync(accept, inbox);
+                var response = await humbleActivityPub.Accept(accept, inbox);
 
                 if (!response.IsSuccessStatusCode)
                 {
                     return TypedResults.BadRequest("Could not send Accept message.");
                 }
 
-                if (humbleDbContext.DbContext.FollowRelations.Find(followerId, userId) is not null)
+                if (humbleDbContext.FindRelations(userId, followerId) is not null)
                 {
                     return TypedResults.Accepted("Accepted as the Actor already followed the Object.");
                 }
 
-                UserInfo? dbFollower = humbleDbContext.DbContext.Users.Find(followerId);
+                UserInfo? dbFollower = humbleDbContext.Find(followerId);
                 if (dbFollower is null)
                 {
                     dbFollower = new("Some Follower", followerId);
-                    humbleDbContext.DbContext.Add(dbFollower);
+                    humbleDbContext.AddUser(dbFollower);
                 }
 
-                humbleDbContext.DbContext.Add(new FollowRelation(dbFollower.Id, userInfo.Id));
-                humbleDbContext.DbContext.SaveChanges();
+                humbleDbContext.AddRelation(dbFollower, userInfo);
+                humbleDbContext.SaveChanges();
 
                 return TypedResults.Accepted("Accepted");
             }
@@ -148,20 +148,20 @@ public static class UsersApi
                 switch (undo.Object?.First())
                 {
                     case Follow follow:
-                        var followerId = humbleActivityPub.ActivityPub.GetPersonId(follow.Actor?.First());
+                        var followerId = humbleActivityPub.FollowerId2(follow);
                         var objectPersonId = follow.Object?.First();
                         if (followerId is null || objectPersonId is not ILink { Href: { } followedId })
                         {
                             return TypedResults.BadRequest("Could not Undo Follow either because the actor was not a Link or did not have an id or because the Object was not a Link.");
                         }
 
-                        FollowRelation? followRelation = humbleDbContext.DbContext.FollowRelations.Find(followerId, followedId.ToString());
+                        FollowRelation? followRelation = humbleDbContext.FindRelations(followerId, followedId.ToString());
                         if (followRelation is null)
                         {
                             return TypedResults.BadRequest("Could not Undo Follow because the Actor was not following the Object.");
                         }
-                        humbleDbContext.DbContext.FollowRelations.Remove(followRelation);
-                        humbleDbContext.DbContext.SaveChanges();
+                        humbleDbContext.RemoveRelation(followRelation);
+                        humbleDbContext.SaveChanges();
                         return TypedResults.Accepted("Accepted");
                     default:
                         return TypedResults.BadRequest(Serialize(undo.Object));
@@ -232,35 +232,5 @@ public static class UsersApi
             TotalItems = (uint)relations.Count()
         };
         return TypedResults.Ok(collection);
-    }
-}
-
-public class HumbleActivityPub
-{
-    public ActivityPubService ActivityPub { get; }
-
-    public HumbleActivityPub(ActivityPubService activityPub)
-    {
-        ActivityPub = activityPub;
-    }
-}
-
-public class HumbleDbContext
-{
-    public ActivityPubDbContext DbContext { get; }
-
-    public HumbleDbContext(ActivityPubDbContext dbContext)
-    {
-        DbContext = dbContext;
-    }
-}
-
-public class HumbleConfiguration
-{
-    public IConfiguration Configuration { get; }
-
-    public HumbleConfiguration(IConfiguration configuration)
-    {
-        Configuration = configuration;
     }
 }
