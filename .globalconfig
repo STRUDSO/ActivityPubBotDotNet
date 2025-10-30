@@ -1,0 +1,24 @@
+is_global = true
+
+# ------------------------------------------------------------------------------
+# Code Metrics Rules Configuration
+# CA1501 – Avoid excessive inheritance (default depth > 1)
+# CA1502 – Avoid excessive cyclomatic complexity (default > 25)
+# CA1505 – Avoid unmaintainable code (maintainability index < 20)
+# CA1506 – Avoid excessive class coupling (default > 80 coupled types)
+# CA1509: Invalid entry in code metrics configuration file
+# ------------------------------------------------------------------------------
+
+# Code Metrics configuration
+dotnet_diagnostic.CA1501.severity = warning
+dotnet_diagnostic.CA1502.severity = warning
+dotnet_diagnostic.CA1505.severity = warning
+dotnet_diagnostic.CA1506.severity = warning
+dotnet_diagnostic.CA1509.severity = warning
+
+# CA1508: Avoid dead conditional code
+dotnet_diagnostic.CA1508.severity = warning
+
+# Cognitive Complexity of methods (S3776)
+dotnet_diagnostic.S3776.severity = warning
+dotnet_diagnostic.S4144.severity = warning
