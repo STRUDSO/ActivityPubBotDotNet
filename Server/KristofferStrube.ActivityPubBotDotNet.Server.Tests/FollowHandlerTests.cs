@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using KristofferStrube.ActivityStreams;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.Configuration;
 
@@ -16,7 +17,7 @@ public class FollowHandlerTests
         ) : Server.FollowHandler(dbContext, activityPub, configuration)
     {
         public List<string> Followers = new();
-        protected override Task<Uri?> InboxUrl(Follow follow)
+        protected override Task<Uri?> InboxUrl(IObjectOrLink objectOrLink)
         {
             return Task.FromResult<Uri?>(inboxUri);
         }
@@ -26,11 +27,11 @@ public class FollowHandlerTests
             return Task.FromResult(responseMessage);
         }
 
-        protected override Task<Results<BadRequest<string>, Accepted>> Follow(string userId, string followerId)
+        protected override Task<string> Follow(string userId, string followerId)
         {
             Followers.Add($"UserId: {userId}, FollowerId: {followerId}");
 
-            return Task.FromResult<Results<BadRequest<string>, Accepted>>(null);
+            return Task.FromResult("Test");
         }
     }
     [Fact]
@@ -58,24 +59,18 @@ public class FollowHandlerTests
                     Actor = actor,
                     Object = objects
                 };
-                try
-                {
                     var result = sut.Follow_(userId, follow).Result;
                     var re = result.Result switch
                     {
                         BadRequest<string> br => br.Value,
-                        Accepted ac => ac.Location
+                        Accepted ac => ac.Location,
+                        _ => throw new ArgumentOutOfRangeException()
                     } ;
                     var join = string.Join("|", sut.Followers);
                     return join + re;
-                }
-                catch (Exception ex)
-                {
-                    return ex.Message;
-                }
             },
-            [null, [], new[] { new ObjectOrLink() }, new[] { new Person(){ Id = "10"} }],
-            [null, [], [new Person { Id = "-1" }], new[] { new Person { Id = $"/Users/{userId}" } }],
+            [null, new[] { new ObjectOrLink() }, new[] { new Person(){ Id = "10"} }],
+            [null, [new Person { Id = "-1" }], new[] { new Person { Id = $"/Users/{userId}" } }],
             [HttpStatusCode.OK, HttpStatusCode.BadRequest],
             [new Uri("http://localhost"), null]
         );

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using KristofferStrube.ActivityStreams;
 using Microsoft.AspNetCore.Http.HttpResults;
 
@@ -7,50 +8,75 @@ public class FollowHandler(ActivityPubDbContext dbContext, ActivityPubService ac
 {
     public async Task<Results<BadRequest<string>, Accepted>> Follow_(string userId, Follow follow)
     {
-        if (follow.Actor is null)
+        try
         {
-            return TypedResults.BadRequest("Follow request had no actor.");
+            return TypedResults.Accepted(await Follow(userId, follow));
         }
-        if (activityPub.GetPersonId(follow.Object?.First()) is not string objectPersonId)
+        catch (Exception ex)
         {
-            return TypedResults.BadRequest("The Object was not a Link or did not have a id.");
+            return TypedResults.BadRequest(ex.Message);
         }
-        if (objectPersonId != $"{configuration["HostUrls:Server"]}/Users/{userId}")
-        {
-            return TypedResults.BadRequest("The Object Id did not match the address of this inbox.");
-        }
-        var inbox = await InboxUrl(follow);
-        if (inbox is null)
-        {
-            return TypedResults.BadRequest("The User had no inbox specified.");
-        }
+    }
 
-        var response = await Accept(userId, follow, inbox);
+    private async Task<string> Follow(string userId, Follow follow)
+    {
+        Guard(userId, follow.Actor, follow.Object);
 
-        if (!response.IsSuccessStatusCode)
-        {
-            return TypedResults.BadRequest("Could not send Accept message.");
-        }
-        if (activityPub.GetPersonId(follow.Actor.First()) is not string followerId)
-        {
-            return TypedResults.BadRequest("The Actor was not a Link or did not have a id.");
-        }
+        var follower = follow.Actor.First();
+        var inbox = await Inbox(follower);
+
+        await Accept_(userId, follow, inbox);
+
+        var followerId = activityPub.GetPersonId(follower) ?? throw new Exception("The Actor was not a Link or did not have a id.");
 
         return await Follow(userId, followerId);
     }
 
-    protected virtual async Task<Uri?> InboxUrl(Follow follow)
+    private async Task<Uri> Inbox(IObjectOrLink follower)
     {
-        Uri? inbox = await activityPub.GetInboxUriAsync(follow.Actor.First());
-        return inbox;
+        var inbox = await InboxUrl(follower);
+        return inbox ?? throw new Exception("The User had no inbox specified.");
     }
 
-    protected virtual async Task<Results<BadRequest<string>, Accepted>> Follow(string userId,
+    private async Task Accept_(string userId, Follow follow, Uri inbox)
+    {
+        var response = await Accept(userId, follow, inbox);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new Exception("Could not send Accept message.");
+        }
+    }
+
+    private void Guard(string userId, [NotNull]IEnumerable<IObjectOrLink>? objectOrLinks, IEnumerable<IObjectOrLink>? followObject)
+    {
+        if (objectOrLinks is null)
+        {
+            throw new Exception("Follow request had no actor.");
+        }
+
+        var objectPerson = followObject?.First();
+        var personId = activityPub.GetPersonId(objectPerson) ?? throw new Exception("The Object was not a Link or did not have a id.");
+
+        GuardInvalidUserId(userId, personId);
+    }
+
+    private void GuardInvalidUserId(string userId, string personId)
+    {
+        if (personId != $"{configuration["HostUrls:Server"]}/Users/{userId}")
+        {
+            throw new Exception("The Object Id did not match the address of this inbox.");
+        }
+    }
+
+    protected virtual async Task<Uri?> InboxUrl(IObjectOrLink objectOrLink) => await activityPub.GetInboxUriAsync(objectOrLink);
+
+    protected virtual async Task<string> Follow(string userId,
         string followerId)
     {
         if (await dbContext.FollowRelations.FindAsync(followerId, userId) is not null)
         {
-            return TypedResults.Accepted("Accepted as the Actor already followed the Object.");
+            return "Accepted as the Actor already followed the Object.";
         }
         UserInfo dbUser = (await dbContext.Users.FindAsync($"{configuration["HostUrls:Server"]}/Users/{userId}"))!;
         UserInfo? dbFollower = await dbContext.Users.FindAsync(followerId);
@@ -62,7 +88,7 @@ public class FollowHandler(ActivityPubDbContext dbContext, ActivityPubService ac
         dbContext.Add(new FollowRelation(dbFollower.Id, dbUser.Id));
         await dbContext.SaveChangesAsync();
 
-        return TypedResults.Accepted("Accepted");
+        return "Accepted";
     }
 
     protected virtual async Task<HttpResponseMessage> Accept(string userId,
