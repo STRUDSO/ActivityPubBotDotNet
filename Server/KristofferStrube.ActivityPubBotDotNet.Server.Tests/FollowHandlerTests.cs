@@ -21,7 +21,7 @@ public class FollowHandlerTests
             return Task.FromResult<Uri?>(inboxUri);
         }
 
-        protected override Task<HttpResponseMessage> Accept(string userId, IConfiguration configuration, ActivityPubService activityPub, Follow follow, Uri inbox)
+        protected override Task<HttpResponseMessage> Accept(string userId, Follow follow, Uri inbox)
         {
             return Task.FromResult(responseMessage);
         }

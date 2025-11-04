@@ -25,7 +25,7 @@ public class FollowHandler(ActivityPubDbContext dbContext, ActivityPubService ac
             return TypedResults.BadRequest("The User had no inbox specified.");
         }
 
-        var response = await Accept(userId, configuration, activityPub, follow, inbox);
+        var response = await Accept(userId, follow, inbox);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -65,7 +65,7 @@ public class FollowHandler(ActivityPubDbContext dbContext, ActivityPubService ac
         return TypedResults.Accepted("Accepted");
     }
 
-    protected virtual async Task<HttpResponseMessage> Accept(string userId, IConfiguration configuration, ActivityPubService activityPub,
+    protected virtual async Task<HttpResponseMessage> Accept(string userId,
         Follow follow, Uri inbox)
     {
         Accept accept = new Accept()
