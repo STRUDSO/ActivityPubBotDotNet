@@ -15,7 +15,7 @@ public class FollowHandlerTests
         Uri inboxUri
         ) : Server.FollowHandler(dbContext, activityPub, configuration)
     {
-        private List<string> Followers = new();
+        public List<string> Followers = new();
         protected override Task<Uri?> InboxUrl(Follow follow)
         {
             return Task.FromResult<Uri?>(inboxUri);
@@ -58,10 +58,24 @@ public class FollowHandlerTests
                     Actor = actor,
                     Object = objects
                 };
-                return sut.Follow_(userId, follow);
+                try
+                {
+                    var result = sut.Follow_(userId, follow).Result;
+                    var re = result.Result switch
+                    {
+                        BadRequest<string> br => br.Value,
+                        Accepted ac => ac.Location
+                    } ;
+                    var join = string.Join("|", sut.Followers);
+                    return join + re;
+                }
+                catch (Exception ex)
+                {
+                    return ex.Message;
+                }
             },
-            [null, new[] { new ObjectOrLink() }, new[] { new Person(){ Id = "10"} }],
-            [null, [new Person { Id = "-1" }], new[] { new Person { Id = $"/Users/{userId}" } }],
+            [null, [], new[] { new ObjectOrLink() }, new[] { new Person(){ Id = "10"} }],
+            [null, [], [new Person { Id = "-1" }], new[] { new Person { Id = $"/Users/{userId}" } }],
             [HttpStatusCode.OK, HttpStatusCode.BadRequest],
             [new Uri("http://localhost"), null]
         );
