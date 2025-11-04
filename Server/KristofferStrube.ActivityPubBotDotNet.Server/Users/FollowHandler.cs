@@ -6,24 +6,12 @@ namespace KristofferStrube.ActivityPubBotDotNet.Server;
 
 public class FollowHandler(ActivityPubDbContext dbContext, ActivityPubService activityPub, IConfiguration configuration)
 {
-    public async Task<Results<BadRequest<string>, Accepted>> Follow_(string userId, Follow follow)
-    {
-        try
-        {
-            return TypedResults.Accepted(await Follow(userId, follow));
-        }
-        catch (Exception ex)
-        {
-            return TypedResults.BadRequest(ex.Message);
-        }
-    }
-
-    private async Task<string> Follow(string userId, Follow follow)
+    public async Task<string> Follow(string userId, Follow follow)
     {
         Guard(userId, follow.Actor, follow.Object);
 
         var follower = follow.Actor.First();
-        var inbox = await Inbox(follower);
+        var inbox = await GetInboxUrl(follower);
 
         await Accept_(userId, follow, inbox);
 
@@ -32,7 +20,7 @@ public class FollowHandler(ActivityPubDbContext dbContext, ActivityPubService ac
         return await Follow(userId, followerId);
     }
 
-    private async Task<Uri> Inbox(IObjectOrLink follower)
+    private async Task<Uri> GetInboxUrl(IObjectOrLink follower)
     {
         var inbox = await InboxUrl(follower);
         return inbox ?? throw new Exception("The User had no inbox specified.");

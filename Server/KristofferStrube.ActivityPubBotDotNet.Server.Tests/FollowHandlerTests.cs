@@ -59,15 +59,17 @@ public class FollowHandlerTests
                     Actor = actor,
                     Object = objects
                 };
-                    var result = sut.Follow_(userId, follow).Result;
-                    var re = result.Result switch
+                    string result;
+                    try
                     {
-                        BadRequest<string> br => br.Value,
-                        Accepted ac => ac.Location,
-                        _ => throw new ArgumentOutOfRangeException()
-                    } ;
+                        result = sut.Follow(userId, follow).Result;
+                    }
+                    catch (AggregateException e)
+                    {
+                        result = e.InnerExceptions.First().Message;
+                    }
                     var join = string.Join("|", sut.Followers);
-                    return join + re;
+                    return join + result;
             },
             [null, new[] { new ObjectOrLink() }, new[] { new Person(){ Id = "10"} }],
             [null, [new Person { Id = "-1" }], new[] { new Person { Id = $"/Users/{userId}" } }],

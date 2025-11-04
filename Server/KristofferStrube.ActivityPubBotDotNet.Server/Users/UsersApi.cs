@@ -80,7 +80,14 @@ public static class UsersApi
         switch (obj)
         {
             case Follow follow:
-                return await new FollowHandler(dbContext, activityPub, configuration).Follow_(userId, follow);
+                try
+                {
+                    return TypedResults.Accepted(await new FollowHandler(dbContext, activityPub, configuration).Follow(userId, follow));
+                }
+                catch (Exception ex)
+                {
+                    return TypedResults.BadRequest(ex.Message);
+                }
             case Undo undo:
                 switch (undo.Object?.First())
                 {
