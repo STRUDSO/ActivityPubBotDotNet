@@ -1,0 +1,213 @@
+﻿{
+  null                                         , null                                   , OK        , http://localhost/: {
+    Result: {
+      Value: Follow request had no actor.,
+      StatusCode: 400
+    }
+  },
+  null                                         , null                                   , OK        , null             : {
+    Result: {
+      Value: Follow request had no actor.,
+      StatusCode: 400
+    }
+  },
+  null                                         , null                                   , BadRequest, http://localhost/: {
+    Result: {
+      Value: Follow request had no actor.,
+      StatusCode: 400
+    }
+  },
+  null                                         , null                                   , BadRequest, null             : {
+    Result: {
+      Value: Follow request had no actor.,
+      StatusCode: 400
+    }
+  },
+  null                                         , KristofferStrube.ActivityStreams.Person, OK        , http://localhost/: {
+    Result: {
+      Value: Follow request had no actor.,
+      StatusCode: 400
+    }
+  },
+  null                                         , KristofferStrube.ActivityStreams.Person, OK        , null             : {
+    Result: {
+      Value: Follow request had no actor.,
+      StatusCode: 400
+    }
+  },
+  null                                         , KristofferStrube.ActivityStreams.Person, BadRequest, http://localhost/: {
+    Result: {
+      Value: Follow request had no actor.,
+      StatusCode: 400
+    }
+  },
+  null                                         , KristofferStrube.ActivityStreams.Person, BadRequest, null             : {
+    Result: {
+      Value: Follow request had no actor.,
+      StatusCode: 400
+    }
+  },
+  null                                         , KristofferStrube.ActivityStreams.Person, OK        , http://localhost/: {
+    Result: {
+      Value: Follow request had no actor.,
+      StatusCode: 400
+    }
+  },
+  null                                         , KristofferStrube.ActivityStreams.Person, OK        , null             : {
+    Result: {
+      Value: Follow request had no actor.,
+      StatusCode: 400
+    }
+  },
+  null                                         , KristofferStrube.ActivityStreams.Person, BadRequest, http://localhost/: {
+    Result: {
+      Value: Follow request had no actor.,
+      StatusCode: 400
+    }
+  },
+  null                                         , KristofferStrube.ActivityStreams.Person, BadRequest, null             : {
+    Result: {
+      Value: Follow request had no actor.,
+      StatusCode: 400
+    }
+  },
+  KristofferStrube.ActivityStreams.ObjectOrLink, null                                   , OK        , http://localhost/: {
+    Result: {
+      Value: The Object was not a Link or did not have a id.,
+      StatusCode: 400
+    }
+  },
+  KristofferStrube.ActivityStreams.ObjectOrLink, null                                   , OK        , null             : {
+    Result: {
+      Value: The Object was not a Link or did not have a id.,
+      StatusCode: 400
+    }
+  },
+  KristofferStrube.ActivityStreams.ObjectOrLink, null                                   , BadRequest, http://localhost/: {
+    Result: {
+      Value: The Object was not a Link or did not have a id.,
+      StatusCode: 400
+    }
+  },
+  KristofferStrube.ActivityStreams.ObjectOrLink, null                                   , BadRequest, null             : {
+    Result: {
+      Value: The Object was not a Link or did not have a id.,
+      StatusCode: 400
+    }
+  },
+  KristofferStrube.ActivityStreams.ObjectOrLink, KristofferStrube.ActivityStreams.Person, OK        , http://localhost/: {
+    Result: {
+      Value: The Object Id did not match the address of this inbox.,
+      StatusCode: 400
+    }
+  },
+  KristofferStrube.ActivityStreams.ObjectOrLink, KristofferStrube.ActivityStreams.Person, OK        , null             : {
+    Result: {
+      Value: The Object Id did not match the address of this inbox.,
+      StatusCode: 400
+    }
+  },
+  KristofferStrube.ActivityStreams.ObjectOrLink, KristofferStrube.ActivityStreams.Person, BadRequest, http://localhost/: {
+    Result: {
+      Value: The Object Id did not match the address of this inbox.,
+      StatusCode: 400
+    }
+  },
+  KristofferStrube.ActivityStreams.ObjectOrLink, KristofferStrube.ActivityStreams.Person, BadRequest, null             : {
+    Result: {
+      Value: The Object Id did not match the address of this inbox.,
+      StatusCode: 400
+    }
+  },
+  KristofferStrube.ActivityStreams.ObjectOrLink, KristofferStrube.ActivityStreams.Person, OK        , http://localhost/: {
+    Result: {
+      Value: The Actor was not a Link or did not have a id.,
+      StatusCode: 400
+    }
+  },
+  KristofferStrube.ActivityStreams.ObjectOrLink, KristofferStrube.ActivityStreams.Person, OK        , null             : {
+    Result: {
+      Value: The User had no inbox specified.,
+      StatusCode: 400
+    }
+  },
+  KristofferStrube.ActivityStreams.ObjectOrLink, KristofferStrube.ActivityStreams.Person, BadRequest, http://localhost/: {
+    Result: {
+      Value: Could not send Accept message.,
+      StatusCode: 400
+    }
+  },
+  KristofferStrube.ActivityStreams.ObjectOrLink, KristofferStrube.ActivityStreams.Person, BadRequest, null             : {
+    Result: {
+      Value: The User had no inbox specified.,
+      StatusCode: 400
+    }
+  },
+  KristofferStrube.ActivityStreams.Person      , null                                   , OK        , http://localhost/: {
+    Result: {
+      Value: The Object was not a Link or did not have a id.,
+      StatusCode: 400
+    }
+  },
+  KristofferStrube.ActivityStreams.Person      , null                                   , OK        , null             : {
+    Result: {
+      Value: The Object was not a Link or did not have a id.,
+      StatusCode: 400
+    }
+  },
+  KristofferStrube.ActivityStreams.Person      , null                                   , BadRequest, http://localhost/: {
+    Result: {
+      Value: The Object was not a Link or did not have a id.,
+      StatusCode: 400
+    }
+  },
+  KristofferStrube.ActivityStreams.Person      , null                                   , BadRequest, null             : {
+    Result: {
+      Value: The Object was not a Link or did not have a id.,
+      StatusCode: 400
+    }
+  },
+  KristofferStrube.ActivityStreams.Person      , KristofferStrube.ActivityStreams.Person, OK        , http://localhost/: {
+    Result: {
+      Value: The Object Id did not match the address of this inbox.,
+      StatusCode: 400
+    }
+  },
+  KristofferStrube.ActivityStreams.Person      , KristofferStrube.ActivityStreams.Person, OK        , null             : {
+    Result: {
+      Value: The Object Id did not match the address of this inbox.,
+      StatusCode: 400
+    }
+  },
+  KristofferStrube.ActivityStreams.Person      , KristofferStrube.ActivityStreams.Person, BadRequest, http://localhost/: {
+    Result: {
+      Value: The Object Id did not match the address of this inbox.,
+      StatusCode: 400
+    }
+  },
+  KristofferStrube.ActivityStreams.Person      , KristofferStrube.ActivityStreams.Person, BadRequest, null             : {
+    Result: {
+      Value: The Object Id did not match the address of this inbox.,
+      StatusCode: 400
+    }
+  },
+  KristofferStrube.ActivityStreams.Person      , KristofferStrube.ActivityStreams.Person, OK        , http://localhost/: null,
+  KristofferStrube.ActivityStreams.Person      , KristofferStrube.ActivityStreams.Person, OK        , null             : {
+    Result: {
+      Value: The User had no inbox specified.,
+      StatusCode: 400
+    }
+  },
+  KristofferStrube.ActivityStreams.Person      , KristofferStrube.ActivityStreams.Person, BadRequest, http://localhost/: {
+    Result: {
+      Value: Could not send Accept message.,
+      StatusCode: 400
+    }
+  },
+  KristofferStrube.ActivityStreams.Person      , KristofferStrube.ActivityStreams.Person, BadRequest, null             : {
+    Result: {
+      Value: The User had no inbox specified.,
+      StatusCode: 400
+    }
+  }
+}

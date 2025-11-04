@@ -7,8 +7,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KristofferStrube.ActivityPu
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KristoffferStrube.ActivityPubBotDotNet.Client", "Client\KristoffferStrube.ActivityPubBotDotNet.Client\KristoffferStrube.ActivityPubBotDotNet.Client.csproj", "{ECB1B4AC-00DB-4560-AA99-F6A81E28E93C}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Server", "Server", "{DAD03CFC-D5FA-AC94-41C7-9ABAB326F09E}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "KristofferStrube.ActivityPubBotDotNet.Server.Tests", "Server\KristofferStrube.ActivityPubBotDotNet.Server.Tests\KristofferStrube.ActivityPubBotDotNet.Server.Tests.csproj", "{53B8FAFC-8E08-43B2-B61B-EDC6F4DC9877}"
 EndProject
 Global
@@ -62,7 +60,6 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{53B8FAFC-8E08-43B2-B61B-EDC6F4DC9877} = {DAD03CFC-D5FA-AC94-41C7-9ABAB326F09E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {85F35453-A54C-4436-A503-74D84D76BB54}
