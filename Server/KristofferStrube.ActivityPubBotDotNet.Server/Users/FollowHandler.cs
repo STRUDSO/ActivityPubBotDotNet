@@ -11,22 +11,22 @@ public class FollowHandler(ActivityPubDbContext dbContext, ActivityPubService ac
         Guard(userId, follow.Actor, follow.Object);
 
         var follower = follow.Actor.First();
-        var inbox = await GetInboxUrl(follower);
+        var inbox = await TestableGetInboxUrl(follower);
 
-        await Accept_(userId, follow, inbox);
+        await TestAbleAccept(userId, follow, inbox);
 
         var followerId = activityPub.GetPersonId(follower) ?? throw new Exception("The Actor was not a Link or did not have a id.");
 
-        return await Follow(userId, followerId);
+        return await TestableFollow(userId, followerId);
     }
 
-    private async Task<Uri> GetInboxUrl(IObjectOrLink follower)
+    private async Task<Uri> TestableGetInboxUrl(IObjectOrLink follower)
     {
         var inbox = await InboxUrl(follower);
         return inbox ?? throw new Exception("The User had no inbox specified.");
     }
 
-    private async Task Accept_(string userId, Follow follow, Uri inbox)
+    private async Task TestAbleAccept(string userId, Follow follow, Uri inbox)
     {
         var response = await Accept(userId, follow, inbox);
 
@@ -59,7 +59,7 @@ public class FollowHandler(ActivityPubDbContext dbContext, ActivityPubService ac
 
     protected virtual async Task<Uri?> InboxUrl(IObjectOrLink objectOrLink) => await activityPub.GetInboxUriAsync(objectOrLink);
 
-    protected virtual async Task<string> Follow(string userId,
+    protected virtual async Task<string> TestableFollow(string userId,
         string followerId)
     {
         if (await dbContext.FollowRelations.FindAsync(followerId, userId) is not null)

@@ -27,7 +27,7 @@ public class FollowHandlerTests
             return Task.FromResult(responseMessage);
         }
 
-        protected override Task<string> Follow(string userId, string followerId)
+        protected override Task<string> TestableFollow(string userId, string followerId)
         {
             Followers.Add($"UserId: {userId}, FollowerId: {followerId}");
 
