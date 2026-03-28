@@ -18,8 +18,9 @@ public class HandleUndoTests
     public void Object_Not_A_Follow()
     {
         var undo = new Undo { Object = new List<IObjectOrLink> { new Note() } };
-        var result = UsersApi.HandleUndo(undo, CreateDb(), new FakeActivityPubService());
-        Assert.Equal("400: [{\"@context\":\"https://www.w3.org/ns/activitystreams\",\"type\":\"Note\"}]", Describe(result));
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => UsersApi.HandleUndo(undo, CreateDb(), new FakeActivityPubService()));
+        Assert.Equal("[{\"@context\":\"https://www.w3.org/ns/activitystreams\",\"type\":\"Note\"}]", ex.Message);
     }
 
     [Fact]
@@ -32,16 +33,18 @@ public class HandleUndoTests
             Object = new List<IObjectOrLink> { new Note() }
         };
         var undo = new Undo { Object = new List<IObjectOrLink> { innerFollow } };
-        var result = UsersApi.HandleUndo(undo, CreateDb(), new FakeActivityPubService());
-        Assert.Equal("400: Could not Undo Follow either because the actor was not a Link or did not have an id or because the Object was not a Link.", Describe(result));
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => UsersApi.HandleUndo(undo, CreateDb(), new FakeActivityPubService()));
+        Assert.Equal("Could not Undo Follow either because the actor was not a Link or did not have an id or because the Object was not a Link.", ex.Message);
     }
 
     [Fact]
     public void Follow_Relation_Not_Found()
     {
         var undo = new Undo { Object = new List<IObjectOrLink> { ValidInnerFollow() } };
-        var result = UsersApi.HandleUndo(undo, CreateDb(), new FakeActivityPubService());
-        Assert.Equal("400: Could not Undo Follow because the Actor was not following the Object.", Describe(result));
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => UsersApi.HandleUndo(undo, CreateDb(), new FakeActivityPubService()));
+        Assert.Equal("Could not Undo Follow because the Actor was not following the Object.", ex.Message);
     }
 
     [Fact]
@@ -57,7 +60,7 @@ public class HandleUndoTests
 
         var undo = new Undo { Object = new List<IObjectOrLink> { ValidInnerFollow() } };
         var result = UsersApi.HandleUndo(undo, db, new FakeActivityPubService());
-        Assert.Equal("202: Accepted", Describe(result));
+        Assert.Equal("Accepted", result);
 
         Assert.Equal(0, db.FollowRelations.Count());
     }

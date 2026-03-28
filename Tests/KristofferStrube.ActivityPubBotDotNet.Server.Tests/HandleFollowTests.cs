@@ -25,8 +25,9 @@ public class HandleFollowTests
             Actor  = null,
             Object = new List<IObjectOrLink> { new Link { Href = new Uri("https://test.example.com/Users/bot") } }
         };
-        var result = await UsersApi.HandleFollow("bot", follow, Config(), CreateDb(), DefaultFake());
-        Assert.Equal("400: Follow request had no actor.", Describe(result));
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => UsersApi.HandleFollow("bot", follow, Config(), CreateDb(), DefaultFake()));
+        Assert.Equal("Follow request had no actor.", ex.Message);
     }
 
     [Fact]
@@ -37,8 +38,9 @@ public class HandleFollowTests
             Actor  = new List<IObjectOrLink> { new Link { Href = new Uri("https://follower.example.com/users/follower") } },
             Object = new List<IObjectOrLink> { new Note() }
         };
-        var result = await UsersApi.HandleFollow("bot", follow, Config(), CreateDb(), DefaultFake());
-        Assert.Equal("400: The Object was not a Link or did not have a id.", Describe(result));
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => UsersApi.HandleFollow("bot", follow, Config(), CreateDb(), DefaultFake()));
+        Assert.Equal("The Object was not a Link or did not have a id.", ex.Message);
     }
 
     [Fact]
@@ -49,16 +51,18 @@ public class HandleFollowTests
             Actor  = new List<IObjectOrLink> { new Link { Href = new Uri("https://follower.example.com/users/follower") } },
             Object = new List<IObjectOrLink> { new Link { Href = new Uri("https://other.example.com/Users/bot") } }
         };
-        var result = await UsersApi.HandleFollow("bot", follow, Config(), CreateDb(), DefaultFake());
-        Assert.Equal("400: The Object Id did not match the address of this inbox.", Describe(result));
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => UsersApi.HandleFollow("bot", follow, Config(), CreateDb(), DefaultFake()));
+        Assert.Equal("The Object Id did not match the address of this inbox.", ex.Message);
     }
 
     [Fact]
     public async Task GetInboxUri_Returns_Null()
     {
         var fake = new FakeActivityPubService(inboxUri: null);
-        var result = await UsersApi.HandleFollow("bot", ValidFollow(), Config(), CreateDb(), fake);
-        Assert.Equal("400: The User had no inbox specified.", Describe(result));
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => UsersApi.HandleFollow("bot", ValidFollow(), Config(), CreateDb(), fake));
+        Assert.Equal("The User had no inbox specified.", ex.Message);
     }
 
     [Fact]
@@ -67,8 +71,9 @@ public class HandleFollowTests
         var fake = new FakeActivityPubService(
             inboxUri: new Uri("https://follower.example.com/inbox"),
             postStatus: HttpStatusCode.InternalServerError);
-        var result = await UsersApi.HandleFollow("bot", ValidFollow(), Config(), CreateDb(), fake);
-        Assert.Equal("400: Could not send Accept message.", Describe(result));
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => UsersApi.HandleFollow("bot", ValidFollow(), Config(), CreateDb(), fake));
+        Assert.Equal("Could not send Accept message.", ex.Message);
     }
 
     [Fact]
@@ -81,8 +86,9 @@ public class HandleFollowTests
             Actor  = new List<IObjectOrLink> { new Note() },
             Object = new List<IObjectOrLink> { new Link { Href = new Uri("https://test.example.com/Users/bot") } }
         };
-        var result = await UsersApi.HandleFollow("bot", follow, Config(), CreateDb(), DefaultFake());
-        Assert.Equal("400: The Actor was not a Link or did not have a id.", Describe(result));
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => UsersApi.HandleFollow("bot", follow, Config(), CreateDb(), DefaultFake()));
+        Assert.Equal("The Actor was not a Link or did not have a id.", ex.Message);
     }
 
     [Fact]
@@ -94,7 +100,7 @@ public class HandleFollowTests
         db.SaveChanges();
 
         var result = await UsersApi.HandleFollow("bot", ValidFollow(), Config(), db, DefaultFake());
-        Assert.Equal("202: Accepted as the Actor already followed the Object.", Describe(result));
+        Assert.Equal("Accepted as the Actor already followed the Object.", result);
     }
 
     [Fact]
@@ -106,7 +112,7 @@ public class HandleFollowTests
 
         var fake = DefaultFake();
         var result = await UsersApi.HandleFollow("bot", ValidFollow(), Config(), db, fake);
-        Assert.Equal("202: Accepted", Describe(result));
+        Assert.Equal("Accepted", result);
 
         Assert.Equal(1, db.FollowRelations.Count());
         Assert.Equal(2, db.Users.Count()); // bot + follower added
@@ -127,7 +133,7 @@ public class HandleFollowTests
 
         var fake = DefaultFake();
         var result = await UsersApi.HandleFollow("bot", ValidFollow(), Config(), db, fake);
-        Assert.Equal("202: Accepted", Describe(result));
+        Assert.Equal("Accepted", result);
 
         Assert.Equal(1, db.FollowRelations.Count());
         var accept = Assert.IsType<Accept>(fake.LastPostedObject);
