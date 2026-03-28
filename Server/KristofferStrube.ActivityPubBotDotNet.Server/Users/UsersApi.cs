@@ -75,34 +75,42 @@ public static class UsersApi
         if (user is null)
             return TypedResults.BadRequest("User could not be found.");
 
-        return obj switch
+        try
         {
-            Follow follow => await HandleFollow(userId, follow, configuration, dbContext, activityPub),
-            Undo undo     => HandleUndo(undo, dbContext, activityPub),
-            _             => TypedResults.BadRequest("The Object type was not supported.")
-        };
+            string location = obj switch
+            {
+                Follow follow => await HandleFollow(userId, follow, configuration, dbContext, activityPub),
+                Undo undo     => HandleUndo(undo, dbContext, activityPub),
+                _             => throw new InvalidOperationException("The Object type was not supported.")
+            };
+            return TypedResults.Accepted(location);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return TypedResults.BadRequest(ex.Message);
+        }
     }
 
-    internal static async Task<Results<BadRequest<string>, Accepted>> HandleFollow(
+    internal static async Task<string> HandleFollow(
         string userId, Follow follow, IConfiguration configuration,
         ActivityPubDbContext dbContext, ActivityPubService activityPub)
     {
         if (follow.Actor is null)
         {
-            return TypedResults.BadRequest("Follow request had no actor.");
+            throw new InvalidOperationException("Follow request had no actor.");
         }
         if (activityPub.GetPersonId(follow.Object?.First()) is not string objectPersonId)
         {
-            return TypedResults.BadRequest("The Object was not a Link or did not have a id.");
+            throw new InvalidOperationException("The Object was not a Link or did not have a id.");
         }
         if (objectPersonId != $"{configuration["HostUrls:Server"]}/Users/{userId}")
         {
-            return TypedResults.BadRequest("The Object Id did not match the address of this inbox.");
+            throw new InvalidOperationException("The Object Id did not match the address of this inbox.");
         }
         Uri? inbox = await activityPub.GetInboxUriAsync(follow.Actor.First());
         if (inbox is null)
         {
-            return TypedResults.BadRequest("The User had no inbox specified.");
+            throw new InvalidOperationException("The User had no inbox specified.");
         }
 
         Accept accept = new Accept()
@@ -115,16 +123,16 @@ public static class UsersApi
 
         if (!response.IsSuccessStatusCode)
         {
-            return TypedResults.BadRequest("Could not send Accept message.");
+            throw new InvalidOperationException("Could not send Accept message.");
         }
         if (activityPub.GetPersonId(follow.Actor.First()) is not string followerId)
         {
-            return TypedResults.BadRequest("The Actor was not a Link or did not have a id.");
+            throw new InvalidOperationException("The Actor was not a Link or did not have a id.");
         }
 
         if (dbContext.FollowRelations.Find(followerId, userId) is not null)
         {
-            return TypedResults.Accepted("Accepted as the Actor already followed the Object.");
+            return "Accepted as the Actor already followed the Object.";
         }
         UserInfo dbUser = dbContext.Users.Find($"{configuration["HostUrls:Server"]}/Users/{userId}")!;
         UserInfo? dbFollower = dbContext.Users.Find(followerId);
@@ -136,28 +144,28 @@ public static class UsersApi
         dbContext.Add(new FollowRelation(dbFollower.Id, dbUser.Id));
         dbContext.SaveChanges();
 
-        return TypedResults.Accepted("Accepted");
+        return "Accepted";
     }
 
-    internal static Results<BadRequest<string>, Accepted> HandleUndo(Undo undo, ActivityPubDbContext dbContext, ActivityPubService activityPub)
+    internal static string HandleUndo(Undo undo, ActivityPubDbContext dbContext, ActivityPubService activityPub)
     {
         switch (undo.Object?.First())
         {
             case Follow follow:
                 if (activityPub.GetPersonId(follow.Actor?.First()) is not string actorId || follow.Object?.First() is not ILink { Href: Uri objectUri })
                 {
-                    return TypedResults.BadRequest($"Could not Undo Follow either because the actor was not a Link or did not have an id or because the Object was not a Link.");
+                    throw new InvalidOperationException($"Could not Undo Follow either because the actor was not a Link or did not have an id or because the Object was not a Link.");
                 }
                 FollowRelation? followRelation = dbContext.FollowRelations.Find(actorId, objectUri.ToString());
                 if (followRelation is null)
                 {
-                    return TypedResults.BadRequest($"Could not Undo Follow because the Actor was not following the Object.");
+                    throw new InvalidOperationException($"Could not Undo Follow because the Actor was not following the Object.");
                 }
                 dbContext.FollowRelations.Remove(followRelation);
                 dbContext.SaveChanges();
-                return TypedResults.Accepted("Accepted");
+                return "Accepted";
             default:
-                return TypedResults.BadRequest(Serialize(undo.Object));
+                throw new InvalidOperationException(Serialize(undo.Object));
         }
     }
 
