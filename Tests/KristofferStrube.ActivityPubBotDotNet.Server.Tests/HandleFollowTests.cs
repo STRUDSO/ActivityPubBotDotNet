@@ -26,7 +26,7 @@ public class HandleFollowTests
             Object = new List<IObjectOrLink> { new Link { Href = new Uri("https://test.example.com/Users/bot") } }
         };
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => UsersApi.HandleFollow("bot", follow, Config(), CreateDb(), DefaultFake()));
+            () => new InboxService(Config(), CreateDb(), DefaultFake()).HandleFollow("bot", follow));
         Assert.Equal("Follow request had no actor.", ex.Message);
     }
 
@@ -39,7 +39,7 @@ public class HandleFollowTests
             Object = new List<IObjectOrLink> { new Note() }
         };
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => UsersApi.HandleFollow("bot", follow, Config(), CreateDb(), DefaultFake()));
+            () => new InboxService(Config(), CreateDb(), DefaultFake()).HandleFollow("bot", follow));
         Assert.Equal("The Object was not a Link or did not have a id.", ex.Message);
     }
 
@@ -52,7 +52,7 @@ public class HandleFollowTests
             Object = new List<IObjectOrLink> { new Link { Href = new Uri("https://other.example.com/Users/bot") } }
         };
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => UsersApi.HandleFollow("bot", follow, Config(), CreateDb(), DefaultFake()));
+            () => new InboxService(Config(), CreateDb(), DefaultFake()).HandleFollow("bot", follow));
         Assert.Equal("The Object Id did not match the address of this inbox.", ex.Message);
     }
 
@@ -61,7 +61,7 @@ public class HandleFollowTests
     {
         var fake = new FakeActivityPubService(inboxUri: null);
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => UsersApi.HandleFollow("bot", ValidFollow(), Config(), CreateDb(), fake));
+            () => new InboxService(Config(), CreateDb(), fake).HandleFollow("bot", ValidFollow()));
         Assert.Equal("The User had no inbox specified.", ex.Message);
     }
 
@@ -72,7 +72,7 @@ public class HandleFollowTests
             inboxUri: new Uri("https://follower.example.com/inbox"),
             postStatus: HttpStatusCode.InternalServerError);
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => UsersApi.HandleFollow("bot", ValidFollow(), Config(), CreateDb(), fake));
+            () => new InboxService(Config(), CreateDb(), fake).HandleFollow("bot", ValidFollow()));
         Assert.Equal("Could not send Accept message.", ex.Message);
     }
 
@@ -87,7 +87,7 @@ public class HandleFollowTests
             Object = new List<IObjectOrLink> { new Link { Href = new Uri("https://test.example.com/Users/bot") } }
         };
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => UsersApi.HandleFollow("bot", follow, Config(), CreateDb(), DefaultFake()));
+            () => new InboxService(Config(), CreateDb(), DefaultFake()).HandleFollow("bot", follow));
         Assert.Equal("The Actor was not a Link or did not have a id.", ex.Message);
     }
 
@@ -99,7 +99,7 @@ public class HandleFollowTests
         db.FollowRelations.Add(new FollowRelation("https://follower.example.com/users/follower", "bot"));
         db.SaveChanges();
 
-        var result = await UsersApi.HandleFollow("bot", ValidFollow(), Config(), db, DefaultFake());
+        var result = await new InboxService(Config(), db, DefaultFake()).HandleFollow("bot", ValidFollow());
         Assert.Equal("Accepted as the Actor already followed the Object.", result);
     }
 
@@ -111,7 +111,7 @@ public class HandleFollowTests
         db.SaveChanges();
 
         var fake = DefaultFake();
-        var result = await UsersApi.HandleFollow("bot", ValidFollow(), Config(), db, fake);
+        var result = await new InboxService(Config(), db, fake).HandleFollow("bot", ValidFollow());
         Assert.Equal("Accepted", result);
 
         Assert.Equal(1, db.FollowRelations.Count());
@@ -132,7 +132,7 @@ public class HandleFollowTests
         db.SaveChanges();
 
         var fake = DefaultFake();
-        var result = await UsersApi.HandleFollow("bot", ValidFollow(), Config(), db, fake);
+        var result = await new InboxService(Config(), db, fake).HandleFollow("bot", ValidFollow());
         Assert.Equal("Accepted", result);
 
         Assert.Equal(1, db.FollowRelations.Count());

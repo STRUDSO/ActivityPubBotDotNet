@@ -19,7 +19,7 @@ public class HandleUndoTests
     {
         var undo = new Undo { Object = new List<IObjectOrLink> { new Note() } };
         var ex = Assert.Throws<InvalidOperationException>(
-            () => UsersApi.HandleUndo(undo, CreateDb(), new FakeActivityPubService()));
+            () => new InboxService(Config(), CreateDb(), new FakeActivityPubService()).HandleUndo(undo));
         Assert.Equal("[{\"@context\":\"https://www.w3.org/ns/activitystreams\",\"type\":\"Note\"}]", ex.Message);
     }
 
@@ -34,7 +34,7 @@ public class HandleUndoTests
         };
         var undo = new Undo { Object = new List<IObjectOrLink> { innerFollow } };
         var ex = Assert.Throws<InvalidOperationException>(
-            () => UsersApi.HandleUndo(undo, CreateDb(), new FakeActivityPubService()));
+            () => new InboxService(Config(), CreateDb(), new FakeActivityPubService()).HandleUndo(undo));
         Assert.Equal("Could not Undo Follow either because the actor was not a Link or did not have an id or because the Object was not a Link.", ex.Message);
     }
 
@@ -43,7 +43,7 @@ public class HandleUndoTests
     {
         var undo = new Undo { Object = new List<IObjectOrLink> { ValidInnerFollow() } };
         var ex = Assert.Throws<InvalidOperationException>(
-            () => UsersApi.HandleUndo(undo, CreateDb(), new FakeActivityPubService()));
+            () => new InboxService(Config(), CreateDb(), new FakeActivityPubService()).HandleUndo(undo));
         Assert.Equal("Could not Undo Follow because the Actor was not following the Object.", ex.Message);
     }
 
@@ -59,7 +59,7 @@ public class HandleUndoTests
         db.SaveChanges();
 
         var undo = new Undo { Object = new List<IObjectOrLink> { ValidInnerFollow() } };
-        var result = UsersApi.HandleUndo(undo, db, new FakeActivityPubService());
+        var result = new InboxService(Config(), db, new FakeActivityPubService()).HandleUndo(undo);
         Assert.Equal("Accepted", result);
 
         Assert.Equal(0, db.FollowRelations.Count());
