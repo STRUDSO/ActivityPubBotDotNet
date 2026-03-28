@@ -19,7 +19,7 @@ public class ActivityPubService
         httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/activity+json"));
     }
 
-    public async Task<HttpResponseMessage> PostAsync(IObjectOrLink objectOrLink, Uri requestUri)
+    public virtual async Task<HttpResponseMessage> PostAsync(IObjectOrLink objectOrLink, Uri requestUri)
     {
         string serializedBody = Serialize(objectOrLink);
 
@@ -52,7 +52,7 @@ public class ActivityPubService
         return await httpClient.SendAsync(request);
     }
 
-    public async Task<Uri?> GetInboxUriAsync(IObjectOrLink person)
+    public virtual async Task<Uri?> GetInboxUriAsync(IObjectOrLink person)
     {
         if (person is ILink { Href: Uri href })
         {
