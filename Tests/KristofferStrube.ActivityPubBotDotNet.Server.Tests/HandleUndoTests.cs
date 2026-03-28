@@ -58,5 +58,7 @@ public class HandleUndoTests
         var undo = new Undo { Object = new List<IObjectOrLink> { ValidInnerFollow() } };
         var result = UsersApi.HandleUndo(undo, db, new FakeActivityPubService());
         await Verify(Describe(result));
+
+        Assert.Equal(0, db.FollowRelations.Count());
     }
 }

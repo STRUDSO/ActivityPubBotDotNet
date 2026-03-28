@@ -12,6 +12,11 @@ internal class FakeActivityPubService(
     public override Task<Uri?> GetInboxUriAsync(IObjectOrLink person)
         => Task.FromResult(inboxUri);
 
+    public IObjectOrLink? LastPostedObject { get; private set; }
+
     public override Task<HttpResponseMessage> PostAsync(IObjectOrLink obj, Uri uri)
-        => Task.FromResult(new HttpResponseMessage(postStatus));
+    {
+        LastPostedObject = obj;
+        return Task.FromResult(new HttpResponseMessage(postStatus));
+    }
 }

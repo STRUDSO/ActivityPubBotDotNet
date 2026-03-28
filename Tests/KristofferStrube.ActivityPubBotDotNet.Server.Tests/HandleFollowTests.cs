@@ -104,8 +104,17 @@ public class HandleFollowTests
         db.Users.Add(new UserInfo("Bot", "https://test.example.com/Users/bot"));
         db.SaveChanges();
 
-        var result = await UsersApi.HandleFollow("bot", ValidFollow(), Config(), db, DefaultFake());
+        var fake = DefaultFake();
+        var result = await UsersApi.HandleFollow("bot", ValidFollow(), Config(), db, fake);
         await Verify(Describe(result));
+
+        Assert.Equal(1, db.FollowRelations.Count());
+        Assert.Equal(2, db.Users.Count()); // bot + follower added
+        var accept = Assert.IsType<Accept>(fake.LastPostedObject);
+        Assert.Single(accept.Actor!);
+        Assert.Single(accept.Object!);
+        Assert.Equal("https://test.example.com/Users/bot", Assert.IsType<Link>(accept.Actor!.First()).Href!.ToString());
+        Assert.StartsWith("https://test.example.com/Activity/", accept.Id);
     }
 
     [Fact]
@@ -116,7 +125,15 @@ public class HandleFollowTests
         db.Users.Add(new UserInfo("Follower", "https://follower.example.com/users/follower"));
         db.SaveChanges();
 
-        var result = await UsersApi.HandleFollow("bot", ValidFollow(), Config(), db, DefaultFake());
+        var fake = DefaultFake();
+        var result = await UsersApi.HandleFollow("bot", ValidFollow(), Config(), db, fake);
         await Verify(Describe(result));
+
+        Assert.Equal(1, db.FollowRelations.Count());
+        var accept = Assert.IsType<Accept>(fake.LastPostedObject);
+        Assert.Single(accept.Actor!);
+        Assert.Single(accept.Object!);
+        Assert.Equal("https://test.example.com/Users/bot", Assert.IsType<Link>(accept.Actor!.First()).Href!.ToString());
+        Assert.StartsWith("https://test.example.com/Activity/", accept.Id);
     }
 }
