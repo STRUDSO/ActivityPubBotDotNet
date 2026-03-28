@@ -1,0 +1,8 @@
+{
+  "stryker-config": {
+    "project": "KristofferStrube.ActivityPubBotDotNet.Server.csproj",
+    "reporters": ["html", "progress"],
+    "mutation-level": "Standard",
+    "target-framework": "net10.0"
+  }
+}
