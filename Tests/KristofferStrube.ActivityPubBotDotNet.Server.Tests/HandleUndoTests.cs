@@ -15,15 +15,15 @@ public class HandleUndoTests
         };
 
     [Fact]
-    public async Task Object_Not_A_Follow()
+    public void Object_Not_A_Follow()
     {
         var undo = new Undo { Object = new List<IObjectOrLink> { new Note() } };
         var result = UsersApi.HandleUndo(undo, CreateDb(), new FakeActivityPubService());
-        await Verify(Describe(result));
+        Assert.Equal("400: [{\"@context\":\"https://www.w3.org/ns/activitystreams\",\"type\":\"Note\"}]", Describe(result));
     }
 
     [Fact]
-    public async Task Follow_Has_Bad_Actor_Or_Object()
+    public void Follow_Has_Bad_Actor_Or_Object()
     {
         // Actor is a Note (not ILink/Person) → actorId is null
         var innerFollow = new Follow
@@ -33,19 +33,19 @@ public class HandleUndoTests
         };
         var undo = new Undo { Object = new List<IObjectOrLink> { innerFollow } };
         var result = UsersApi.HandleUndo(undo, CreateDb(), new FakeActivityPubService());
-        await Verify(Describe(result));
+        Assert.Equal("400: Could not Undo Follow either because the actor was not a Link or did not have an id or because the Object was not a Link.", Describe(result));
     }
 
     [Fact]
-    public async Task Follow_Relation_Not_Found()
+    public void Follow_Relation_Not_Found()
     {
         var undo = new Undo { Object = new List<IObjectOrLink> { ValidInnerFollow() } };
-        var result = UsersApi.HandleUndo(undo, CreateDb(), new FakeActivityPubService()); // empty DB
-        await Verify(Describe(result));
+        var result = UsersApi.HandleUndo(undo, CreateDb(), new FakeActivityPubService());
+        Assert.Equal("400: Could not Undo Follow because the Actor was not following the Object.", Describe(result));
     }
 
     [Fact]
-    public async Task Success_Removes_Relation()
+    public void Success_Removes_Relation()
     {
         var db = CreateDb();
         db.Users.Add(new UserInfo("Follower", "https://follower.example.com/users/follower"));
@@ -57,7 +57,7 @@ public class HandleUndoTests
 
         var undo = new Undo { Object = new List<IObjectOrLink> { ValidInnerFollow() } };
         var result = UsersApi.HandleUndo(undo, db, new FakeActivityPubService());
-        await Verify(Describe(result));
+        Assert.Equal("202: Accepted", Describe(result));
 
         Assert.Equal(0, db.FollowRelations.Count());
     }

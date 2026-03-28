@@ -26,7 +26,7 @@ public class HandleFollowTests
             Object = new List<IObjectOrLink> { new Link { Href = new Uri("https://test.example.com/Users/bot") } }
         };
         var result = await UsersApi.HandleFollow("bot", follow, Config(), CreateDb(), DefaultFake());
-        await Verify(Describe(result));
+        Assert.Equal("400: Follow request had no actor.", Describe(result));
     }
 
     [Fact]
@@ -38,7 +38,7 @@ public class HandleFollowTests
             Object = new List<IObjectOrLink> { new Note() }
         };
         var result = await UsersApi.HandleFollow("bot", follow, Config(), CreateDb(), DefaultFake());
-        await Verify(Describe(result));
+        Assert.Equal("400: The Object was not a Link or did not have a id.", Describe(result));
     }
 
     [Fact]
@@ -50,7 +50,7 @@ public class HandleFollowTests
             Object = new List<IObjectOrLink> { new Link { Href = new Uri("https://other.example.com/Users/bot") } }
         };
         var result = await UsersApi.HandleFollow("bot", follow, Config(), CreateDb(), DefaultFake());
-        await Verify(Describe(result));
+        Assert.Equal("400: The Object Id did not match the address of this inbox.", Describe(result));
     }
 
     [Fact]
@@ -58,7 +58,7 @@ public class HandleFollowTests
     {
         var fake = new FakeActivityPubService(inboxUri: null);
         var result = await UsersApi.HandleFollow("bot", ValidFollow(), Config(), CreateDb(), fake);
-        await Verify(Describe(result));
+        Assert.Equal("400: The User had no inbox specified.", Describe(result));
     }
 
     [Fact]
@@ -68,7 +68,7 @@ public class HandleFollowTests
             inboxUri: new Uri("https://follower.example.com/inbox"),
             postStatus: HttpStatusCode.InternalServerError);
         var result = await UsersApi.HandleFollow("bot", ValidFollow(), Config(), CreateDb(), fake);
-        await Verify(Describe(result));
+        Assert.Equal("400: Could not send Accept message.", Describe(result));
     }
 
     [Fact]
@@ -82,7 +82,7 @@ public class HandleFollowTests
             Object = new List<IObjectOrLink> { new Link { Href = new Uri("https://test.example.com/Users/bot") } }
         };
         var result = await UsersApi.HandleFollow("bot", follow, Config(), CreateDb(), DefaultFake());
-        await Verify(Describe(result));
+        Assert.Equal("400: The Actor was not a Link or did not have a id.", Describe(result));
     }
 
     [Fact]
@@ -94,7 +94,7 @@ public class HandleFollowTests
         db.SaveChanges();
 
         var result = await UsersApi.HandleFollow("bot", ValidFollow(), Config(), db, DefaultFake());
-        await Verify(Describe(result));
+        Assert.Equal("202: Accepted as the Actor already followed the Object.", Describe(result));
     }
 
     [Fact]
@@ -106,15 +106,15 @@ public class HandleFollowTests
 
         var fake = DefaultFake();
         var result = await UsersApi.HandleFollow("bot", ValidFollow(), Config(), db, fake);
-        await Verify(Describe(result));
+        Assert.Equal("202: Accepted", Describe(result));
 
         Assert.Equal(1, db.FollowRelations.Count());
         Assert.Equal(2, db.Users.Count()); // bot + follower added
         var accept = Assert.IsType<Accept>(fake.LastPostedObject);
         Assert.Single(accept.Actor!);
         Assert.Single(accept.Object!);
-        Assert.Equal("https://test.example.com/Users/bot", Assert.IsType<Link>(accept.Actor!.First()).Href!.ToString());
         Assert.StartsWith("https://test.example.com/Activity/", accept.Id);
+        Assert.Equal("https://test.example.com/Users/bot", Assert.IsType<Link>(accept.Actor!.First()).Href!.ToString());
     }
 
     [Fact]
@@ -127,13 +127,13 @@ public class HandleFollowTests
 
         var fake = DefaultFake();
         var result = await UsersApi.HandleFollow("bot", ValidFollow(), Config(), db, fake);
-        await Verify(Describe(result));
+        Assert.Equal("202: Accepted", Describe(result));
 
         Assert.Equal(1, db.FollowRelations.Count());
         var accept = Assert.IsType<Accept>(fake.LastPostedObject);
         Assert.Single(accept.Actor!);
         Assert.Single(accept.Object!);
-        Assert.Equal("https://test.example.com/Users/bot", Assert.IsType<Link>(accept.Actor!.First()).Href!.ToString());
         Assert.StartsWith("https://test.example.com/Activity/", accept.Id);
+        Assert.Equal("https://test.example.com/Users/bot", Assert.IsType<Link>(accept.Actor!.First()).Href!.ToString());
     }
 }

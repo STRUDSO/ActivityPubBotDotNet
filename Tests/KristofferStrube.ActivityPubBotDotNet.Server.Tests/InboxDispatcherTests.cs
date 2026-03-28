@@ -10,7 +10,7 @@ public class InboxDispatcherTests
     public async Task User_Not_Found()
     {
         var result = await UsersApi.Inbox("nonexistent", new Note(), Config(), CreateDb(), new FakeActivityPubService());
-        await Verify(Describe(result));
+        Assert.Equal("400: User could not be found.", Describe(result));
     }
 
     [Fact]
@@ -21,7 +21,7 @@ public class InboxDispatcherTests
         db.SaveChanges();
 
         var result = await UsersApi.Inbox("bot", new Note(), Config(), db, new FakeActivityPubService());
-        await Verify(Describe(result));
+        Assert.Equal("400: The Object type was not supported.", Describe(result));
     }
 
     [Fact]
@@ -42,6 +42,6 @@ public class InboxDispatcherTests
         };
 
         var result = await UsersApi.Inbox("bot", follow, Config(), db, fake);
-        await Verify(Describe(result));
+        Assert.Equal("202: Accepted", Describe(result));
     }
 }

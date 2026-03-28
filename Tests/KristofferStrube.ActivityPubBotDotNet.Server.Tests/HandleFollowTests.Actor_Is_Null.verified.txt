@@ -1,1 +1,0 @@
-﻿400: Follow request had no actor.

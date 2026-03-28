@@ -19,7 +19,6 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.0" />
-    <PackageReference Include="Verify.Xunit" Version="28.8.1" />
   </ItemGroup>
 
   <ItemGroup>
